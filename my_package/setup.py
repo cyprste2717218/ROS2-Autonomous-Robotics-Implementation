@@ -13,10 +13,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='auro',
-    maintainer_email='auro@todo.todo',
-    description='TODO: Package description',
-    license='Apache-2.0',
+    maintainer='Stephen Ingham',
+    maintainer_email='stephenmichael833@gmail.com',
+    description='Beginner client libraries tutorials practice package',
+    license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
