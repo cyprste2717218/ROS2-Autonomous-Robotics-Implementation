@@ -6,6 +6,9 @@
   <description>Simple package used to create a topic with a single publisher node and subscriber node</description>
   <maintainer email="stephenmichael833@gmail.com">Stephen Ingham</maintainer>
   <license>Apache License 2.0</license>
+  
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
