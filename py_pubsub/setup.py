@@ -13,10 +13,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='auro',
+    maintainer='Stephen Ingham',
     maintainer_email='stephenmichael833@gmail.com',
-    description='TODO: Package description',
-    license='Apache-2.0',
+    description='Simple package used to create a topic with a single publisher node and subscriber node',
+    license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
