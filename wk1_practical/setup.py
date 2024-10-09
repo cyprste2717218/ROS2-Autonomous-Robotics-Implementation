@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
         	'turtle_topic_echo = wk1_practical.topic_echo:main',
-        	'turtle_do_twist = wk1_practical.turtle_twist:main'
+        	'turtle_do_twist = wk1_practical.turtle_twist:main',
+        	'turtle_do_zig_zag = wk1_practical.turtle_zig_zag:main'
         ],
     },
 )
