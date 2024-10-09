@@ -1,3 +1,7 @@
+import glob
+import os
+
+
 from setuptools import find_packages, setup
 
 package_name = 'wk2_practical'
