@@ -10,6 +10,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/wk2_practical/launch', glob.glob(os.path.join('launch', '*_launch.py')))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
