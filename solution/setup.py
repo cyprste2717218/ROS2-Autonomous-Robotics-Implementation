@@ -2,7 +2,7 @@
 import os
 from setuptools import find_packages, setup
 
-package_name = 'Autonomous Robotic Object Retrieval Solution (AURO-H Module Coursework)'
+package_name = 'solution'
 
 data_files=[
     ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
