@@ -43,7 +43,7 @@ setup(
     maintainer='',
     maintainer_email='"user@todo.todo"',
     description='Package which implements an Autonomous Robotic Solution for object retrieval and distribution within a simulated environment',
-    license='',
+    license='na',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

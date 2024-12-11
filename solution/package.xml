@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>Package which implements an Autonomous Robotic Solution for object retrieval and distribution within a simulated environment</description>
   <maintainer email="user@todo.todo"></maintainer>
-  <license></license>
+  <license>na</license>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
