@@ -107,7 +107,7 @@ def generate_launch_description():
                           'visualise_sensors': 'false',
                           'odometry_source': 'ENCODER',
                           'sensor_noise': 'false',
-                          'use_rviz': 'true',
+                          'use_rviz': 'false',
                           'rviz_config': rviz_config,
                           'rviz_windows': rviz_windows,
                           'obstacles': 'true',

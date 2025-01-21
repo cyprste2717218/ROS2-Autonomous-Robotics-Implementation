@@ -40,10 +40,10 @@ setup(
     data_files=package_files(data_files, ['models/', 'launch/', 'worlds/', 'rviz/', 'config/', 'params/']),
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='',
+    maintainer='user',
     maintainer_email='"user@todo.todo"',
-    description='Package which implements an Autonomous Robotic Solution for object retrieval and distribution within a simulated environment',
-    license='na',
+    description='TODO: Package description',
+    license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
