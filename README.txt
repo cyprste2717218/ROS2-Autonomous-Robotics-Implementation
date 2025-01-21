@@ -7,7 +7,30 @@ Contents:
 - Testable Simulation Scenarios
 
 
-How to Run The Implementation
+How to Run The Implementation:
+-------------------------------------------------
+
+This simulation utilises SLAM via Cartographer, thus the following instructions must be followed to install the needed packages:
+
+
+
+- Install the Cartographer packages and verify presence within the ROS2 system using the following bash commands:
+
+
+```bash
+$ sudo apt install ros-humble-cartographer
+$ ros2 pkg list | grep cartographer
+
+# You should get
+# cartographer_ros
+# cartographer_ros_msgs
+# turtlebot3_cartographer
+
+```
+The terminal output as shown above should evidence the presence of the cartographer_ros, cartographer_ros_msgs and turtlebot3_cartographer packages.
+
+
+
 
 Testable Simulation Scenarios
 
@@ -15,4 +38,4 @@ Testable Simulation Scenarios
 - 3 robots enabled (alongside all defaults)
 
 
-(#1) ros2 launch assessment assessment_launch.py num_robots:=3
+(#1) ros2 launch solution solution_launch.py num_robots:=3
