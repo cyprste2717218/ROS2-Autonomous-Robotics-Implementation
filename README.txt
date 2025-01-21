@@ -14,7 +14,7 @@ This simulation utilises SLAM via Cartographer, thus the following instructions 
 
 
 
-- Install the Cartographer packages and verify presence within the ROS2 system using the following bash commands:
+1). Install the Cartographer packages and verify presence within the ROS2 system using the following bash commands:
 
 
 ```bash
@@ -29,6 +29,14 @@ $ ros2 pkg list | grep cartographer
 ```
 The terminal output as shown above should evidence the presence of the cartographer_ros, cartographer_ros_msgs and turtlebot3_cartographer packages.
 
+2). Rebuild the workspace with the new pkgs and source the local setup file:
+
+Within the workspace directory, execute the following commands
+
+```bash
+$ colcon build 
+$ source install/local_setup.bash
+```
 
 
 
