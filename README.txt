@@ -10,6 +10,8 @@ Contents:
 How to Run The Implementation:
 -------------------------------------------------
 
+mention about needing tf_transformations package, sudo apt installing python3-pip and pip3 install transform3d
+
 This simulation utilises SLAM via Cartographer, thus the following instructions must be followed to install the needed packages:
 
 
