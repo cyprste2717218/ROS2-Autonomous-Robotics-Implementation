@@ -2,6 +2,7 @@
 build/*
 install/*
 log/*
+tf_transformations/*
 week_6/robochart/buffer-example/csp-gen/file_broken_coreassertions.csp
 week_6/robochart/buffer-example/csp-gen/file_broken.csp
 week_6/robochart/buffer-example/csp-gen/file_main_coreassertions.csp

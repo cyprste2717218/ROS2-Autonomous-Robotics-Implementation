@@ -96,7 +96,14 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
         arguments=['-resolution', resolution, '-publish_period_sec', publish_period_sec])
     
-
+    random_movement_node = Node(
+        package='solution',
+        executable='robot_controller',
+        name='random_robot_movement',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+        arguments=['-resolution', resolution, '-publish_period_sec', publish_period_sec])
+    
     rviz_config = PathJoinSubstitution([FindPackageShare('assessment'), 'rviz', 'namespaced.rviz'])
     rviz_windows = PathJoinSubstitution([FindPackageShare('assessment'), 'config', 'rviz_windows.yaml'])
 
@@ -130,6 +137,7 @@ def generate_launch_description():
     ld = LaunchDescription()
     ld.add_action(cartographer_node)
     ld.add_action(cartographer_occupancy_grid_node)
+    ld.add_action(random_movement_node)
     ld.add_action(assessment_cmd)
 
     return ld
