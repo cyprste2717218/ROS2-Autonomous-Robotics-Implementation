@@ -72,8 +72,18 @@ class RobotController(Node):
         self.scan_triggered = [False] * 4 # Boolean value for each of the 4 LiDAR sensor sectors. True if obstacle detected within SCAN_THRESHOLD
         self.items = ItemList()
 
+        
         self.declare_parameter('robot_id', 'robot1')
         self.robot_id = self.get_parameter('robot_id').value
+
+        # Declaring assigned robot parameters from random assignment in solution_nav2_launch.py 
+        self.declare_parameter('assigned_colour', 'blue')
+        self.assigned_colour = self.get_parameter('assigned_colour').value
+     
+        self.declare_parameter('assigned_zone', 'cyan')
+        self.assigned_zone = self.get_parameter('assigned_zone').value
+
+        self.get_logger().info(f'{self.robot_id}: assigned_colour: {self.assigned_colour} assigned_zone: {self.assigned_zone}')
 
         # Here we use two callback groups, to ensure that those in 'client_callback_group' can be executed
         # independently from those in 'timer_callback_group'. This allos calling the services below within

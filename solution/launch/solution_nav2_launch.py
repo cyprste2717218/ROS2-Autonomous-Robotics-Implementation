@@ -1,4 +1,5 @@
 import os
+import random as rand
 from ament_index_python.packages import get_package_share_directory, get_package_prefix
 import yaml
 
@@ -23,9 +24,31 @@ def robot_controller_actions(context : LaunchContext):
 
     actions = []
 
+    item_colours = ['red', 'green', 'blue']
+
+    zone_colours = ['cyan', 'purple', 'green', 'pink']
+
     for robot_number in range(1, num_robots + 1):
 
+        def assign_colour():
+            # Return robot assigned item type to retrieve and deposit
+            assigned_colour = rand.choice(item_colours)
+            item_colours.remove(assigned_colour)
+
+            return assigned_colour
+
+        def assign_zone():
+            # Return robot assigned zone to deposit items
+            assigned_zone = rand.choice(zone_colours)
+            zone_colours.remove(assigned_zone)
+
+            return assigned_zone
+
+
         robot_name = 'robot' + str(robot_number)
+
+      
+
 
         group = GroupAction([
 
@@ -43,7 +66,10 @@ def robot_controller_actions(context : LaunchContext):
                 # prefix=['wt.exe --window 0 new-tab wsl.exe -e bash -ic'], # Opens in new tab
                 # prefix=['wt.exe wsl.exe -e bash -ic'], # Opens in new window
                 output='screen',
-                parameters=[initial_poses[robot_name]]),
+                parameters=[
+                    initial_poses[robot_name], 
+                    {'assigned_colour': assign_colour()},
+                    {'assigned_zone': assign_zone()}]),
 
             # Node(
             #     package='turtlebot3_gazebo',

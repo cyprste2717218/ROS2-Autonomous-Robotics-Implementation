@@ -17,16 +17,16 @@ def robot_controller_actions(context : LaunchContext):
 
     num_robots = 1
         
-    yaml_path = os.path.join(get_package_share_directory('assessment'), 'config', 'initial_poses.yaml')
+    yaml_path = os.path.join(get_package_share_directory('solution'), 'config', 'cartographer_config', 'map_creation_robot_pose.yaml')
 
     with open(yaml_path, 'r') as f:
         configuration = yaml.safe_load(f)
 
-    initial_poses = configuration[num_robots]
+    initial_poses = configuration[1]
 
     actions = []
 
-    for robot_number in range(1, num_robots):
+    for robot_number in range(1, num_robots + 1):
 
         robot_name = 'robot' + str(robot_number)
 
@@ -61,6 +61,9 @@ def robot_controller_actions(context : LaunchContext):
 
 
 def generate_launch_description():
+
+    package_name = 'solution'
+
     # Positioning function pack
     pkg_share = '/home/auro/shared/Documents/AURO/auro_ws/src/solution'
     
@@ -79,7 +82,7 @@ def generate_launch_description():
 
 
     #Nodes
-    cartographer_node = Node(
+    """ cartographer_node = Node(
         package='cartographer_ros',
         executable='cartographer_node',
         name='cartographer_node',
@@ -95,18 +98,28 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
         arguments=['-resolution', resolution, '-publish_period_sec', publish_period_sec])
+ """
     
-    random_movement_node = Node(
-        package='solution',
-        executable='robot_controller',
-        name='random_robot_movement',
-        output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
-        arguments=['-resolution', resolution, '-publish_period_sec', publish_period_sec])
-    
+
+
     rviz_config = PathJoinSubstitution([FindPackageShare('assessment'), 'rviz', 'namespaced.rviz'])
     rviz_windows = PathJoinSubstitution([FindPackageShare('assessment'), 'config', 'rviz_windows.yaml'])
 
+    cartographer_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare('turtlebot3_cartographer'),
+                'launch',
+                'cartographer.launch.py'
+                ])
+        ),
+        launch_arguments={'use_sim_time': 'true',
+                          'configuration_basename': 'config/cartographer_config/map_builder_2d.lua'
+                          }.items()
+    )
+
+
+    robot_controller_cmd = OpaqueFunction(function=robot_controller_actions)
 
     assessment_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -120,24 +133,30 @@ def generate_launch_description():
                           'visualise_sensors': 'false',
                           'odometry_source': 'ENCODER',
                           'sensor_noise': 'false',
-                          'use_rviz': 'true',
+                          'use_rviz': 'false',
                           'rviz_config': rviz_config,
                           'rviz_windows': rviz_windows,
                           'obstacles': 'true',
                           'item_manager': 'false',
-                          'use_nav2': 'false',
+                          'use_nav2': 'true',
                           'headless': 'false',
                           'limit_real_time_factor': 'true',
                           'wait_for_items': 'false',
+                          'initial_pose_package': 'solution',
+                          'inital_pose_file': 'config/cartographer_config/map_creation_robot_pose.yaml'
                           # 'extra_gazebo_args': '--verbose',
                           }.items()
     )
 
     #Launch file
     ld = LaunchDescription()
-    ld.add_action(cartographer_node)
-    ld.add_action(cartographer_occupancy_grid_node)
-    ld.add_action(random_movement_node)
+
+    ld.add_action(SetParameter(name='use_sim_time', value=True))
     ld.add_action(assessment_cmd)
+    ld.add_action(cartographer_cmd)
+    ld.add_action(robot_controller_cmd)
 
     return ld
+
+    """    ld.add_action(cartographer_node)
+    ld.add_action(cartographer_occupancy_grid_node) """
