@@ -48,4 +48,4 @@ Testable Simulation Scenarios
 - 3 robots enabled (alongside all defaults)
 
 
-(#1) ros2 launch solution solution_launch.py num_robots:=3
+(#1) ros2 launch solution solution_nav2_launch.py num_robots:=3

@@ -83,7 +83,7 @@ class RobotController(Node):
         self.declare_parameter('assigned_zone', 'cyan')
         self.assigned_zone = self.get_parameter('assigned_zone').value
 
-        self.get_logger().info(f'{self.robot_id}: assigned_colour: {self.assigned_colour} assigned_zone: {self.assigned_zone}')
+     
 
         # Here we use two callback groups, to ensure that those in 'client_callback_group' can be executed
         # independently from those in 'timer_callback_group'. This allos calling the services below within
@@ -97,7 +97,7 @@ class RobotController(Node):
 
         self.item_subscriber = self.create_subscription(
             ItemList,
-            '/items',
+            'items',
             self.item_callback,
             10, callback_group=timer_callback_group
         )
@@ -154,7 +154,13 @@ class RobotController(Node):
         self.timer = self.create_timer(self.timer_period, self.control_loop, callback_group=timer_callback_group)
 
     def item_callback(self, msg):
-        self.items = msg
+        self.items = msg.data
+        print(self.items)
+        self.state = State.COLLECTING
+
+
+
+        
 
     # Called every time odom_subscriber receives an Odometry message from the /odom topic
     #
@@ -215,17 +221,22 @@ class RobotController(Node):
         marker_input.pose = self.pose # Set the pose of the RViz marker to track the robot's pose
         self.marker_publisher.publish(marker_input)
 
-        #self.get_logger().info(f"{self.state}")
+        #self.get_logger().info(f'{self.robot_id}: assigned_colour: {self.assigned_colour} assigned_zone: {self.assigned_zone}')
+
+        self.get_logger().info(f"{self.state}")
         
         match self.state:
 
             case State.FORWARD:
 
                 if self.scan_triggered[SCAN_FRONT]:
+                    
+                    
                     self.previous_yaw = self.yaw
                     self.state = State.TURNING
                     self.turn_angle = random.uniform(150, 170)
                     self.turn_direction = random.choice([TURN_LEFT, TURN_RIGHT])
+                
                     self.get_logger().info("Detected obstacle in front, turning " + ("left" if self.turn_direction == TURN_LEFT else "right") + f" by {self.turn_angle:.2f} degrees")
                     return
                 
