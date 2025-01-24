@@ -1,0 +1,26 @@
+1:
+  red:
+    zone:  'cyan'
+  green:
+    zone:  'purple'
+  blue:
+    zone:  'green'
+
+2:
+  red:
+    zone:  'purple'
+  green:
+    zone:  'cyan'
+  blue:
+    zone:  'pink'
+
+
+
+3:
+  red:
+    zone:  'green'
+  green:
+    zone:  'purple'
+  blue:
+    zone:  'cyan'
+    

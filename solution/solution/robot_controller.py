@@ -32,7 +32,7 @@ from auro_interfaces.srv import ItemRequest
 from tf_transformations import euler_from_quaternion
 import angles
 
-from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+
 
 from enum import Enum
 import random
@@ -60,31 +60,7 @@ class State(Enum):
     SET_GOAL = 3
 
 
-class SimpleCommander(Node):
-
-    def __init__(self):
-        super().__init__('simple_commander')
-
-        self.state = State.SET_GOAL
-
-        self.navigator = BasicNavigator()
-
-        initial_pose = PoseStamped()
-        initial_pose.header.frame_id = 'map'
-        initial_pose.header.stamp = self.get_clock().now().to_msg()
-        
-        # Define initial poses from initial_poses.yaml based on robot namespace
-
-    """  def determine_initial_poses():
-
-        num_robots = int(context.launch_configurations['num_robots'])
-
-        yaml_path = os.path.join(get_package_share_directory('assessment'), 'config', 'initial_poses.yaml')
-
-        with open(yaml_path, 'r') as f:
-            configuration = yaml.safe_load(f)
-
-        initial_poses = configuration[num_robots]    """  
+ 
 
 class RobotController(Node):
 
@@ -113,18 +89,6 @@ class RobotController(Node):
      
         self.declare_parameter('assigned_zone', 'cyan')
         self.assigned_zone = self.get_parameter('assigned_zone').value
-
-        # Declaring and defining x, y and yaw parameters (for use within SimpleCommanderNode class)
-
-        self.declare_parameter('x', 0.0)
-        self.initial_x = self.get_parameter('x').value
-
-        self.declare_parameter('y', 0.0)
-        self.initial_y = self.get_parameter('y').value
-
-        self.declare_parameter('yaw', 0.0)
-        self.initial_yaw = self.get_parameter('yaw').value
-
      
 
         # Here we use two callback groups, to ensure that those in 'client_callback_group' can be executed
@@ -195,14 +159,14 @@ class RobotController(Node):
         self.timer_period = 0.1 # 100 milliseconds = 10 Hz
         self.timer = self.create_timer(self.timer_period, self.control_loop, callback_group=timer_callback_group)
 
+        # Create Simple Commander Node to utilise nav2 simple commander api - to define initial 2d pose estimate for each robot and direct towards goal 
+
+     
+
     def item_callback(self, msg):
 
         self.items.data = msg.data
-        
-
-
-
-        
+         
 
     # Called every time odom_subscriber receives an Odometry message from the /odom topic
     #
@@ -380,6 +344,7 @@ class RobotController(Node):
                 msg.linear.x = 0.25 * estimated_distance
                 msg.angular.z = item.x / 320.0
                 self.cmd_vel_publisher.publish(msg)
+
 
             case _:
                 pass
