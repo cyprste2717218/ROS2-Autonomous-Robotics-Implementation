@@ -46,7 +46,11 @@ def robot_controller_actions(context : LaunchContext):
                 # prefix=['wt.exe --window 0 new-tab wsl.exe -e bash -ic'], # Opens in new tab
                 # prefix=['wt.exe wsl.exe -e bash -ic'], # Opens in new window
                 output='screen',
-                parameters=[initial_poses[robot_name]]),
+                parameters=[ 
+                    {'x': initial_poses[robot_name]['x']},
+                    {'y': initial_poses[robot_name]['y']},
+                    {'yaw': initial_poses[robot_name]['yaw']}]    
+                    ),
             # Node(
             #     package='turtlebot3_gazebo',
             #     executable='turtlebot3_drive',

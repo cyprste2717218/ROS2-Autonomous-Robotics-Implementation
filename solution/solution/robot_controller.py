@@ -75,6 +75,17 @@ class SimpleCommander(Node):
         
         # Define initial poses from initial_poses.yaml based on robot namespace
 
+    """  def determine_initial_poses():
+
+        num_robots = int(context.launch_configurations['num_robots'])
+
+        yaml_path = os.path.join(get_package_share_directory('assessment'), 'config', 'initial_poses.yaml')
+
+        with open(yaml_path, 'r') as f:
+            configuration = yaml.safe_load(f)
+
+        initial_poses = configuration[num_robots]    """  
+
 class RobotController(Node):
 
     def __init__(self):
@@ -102,6 +113,17 @@ class RobotController(Node):
      
         self.declare_parameter('assigned_zone', 'cyan')
         self.assigned_zone = self.get_parameter('assigned_zone').value
+
+        # Declaring and defining x, y and yaw parameters (for use within SimpleCommanderNode class)
+
+        self.declare_parameter('x', 0.0)
+        self.initial_x = self.get_parameter('x').value
+
+        self.declare_parameter('y', 0.0)
+        self.initial_y = self.get_parameter('y').value
+
+        self.declare_parameter('yaw', 0.0)
+        self.initial_yaw = self.get_parameter('yaw').value
 
      
 
