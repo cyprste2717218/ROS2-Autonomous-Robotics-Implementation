@@ -28,6 +28,7 @@ from sensor_msgs.msg import LaserScan
 from assessment_interfaces.msg import Item, ItemList
 from auro_interfaces.msg import StringWithPose
 from auro_interfaces.srv import ItemRequest
+from solution_interfaces.msg import AllowRobotControllerSearch
 
 from tf_transformations import euler_from_quaternion
 import angles
@@ -57,7 +58,8 @@ class State(Enum):
     FORWARD = 0
     TURNING = 1
     COLLECTING = 2
-    SET_GOAL = 3
+    WAITING_TO_RUN = 3
+
 
 
  
@@ -68,7 +70,7 @@ class RobotController(Node):
         super().__init__('robot_controller')
         
         # Class variables used to store persistent values between executions of callbacks and control loop
-        self.state = State.FORWARD # Current FSM state
+        self.state = State.WAITING_TO_RUN # Current FSM state
         self.pose = Pose() # Current pose (position and orientation), relative to the odom reference frame
         self.previous_pose = Pose() # Store a snapshot of the pose for comparison against future poses
         self.yaw = 0.0 # Angle the robot is facing (rotation around the Z axis, in radians), relative to the odom reference frame
@@ -137,6 +139,14 @@ class RobotController(Node):
             self.scan_callback,
             QoSPresetProfiles.SENSOR_DATA.value, callback_group=timer_callback_group)
 
+
+        self.control_permission_subscriber = self.create_subscription(
+            AllowRobotControllerSearch,
+            'controller_permission',
+            self.control_permission_callback,
+            1, callback_group=timer_callback_group
+        )
+
         # Publishes Twist messages (linear and angular velocities) on the /cmd_vel topic
         # http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Twist.html
         # 
@@ -179,7 +189,8 @@ class RobotController(Node):
     # The pose estimates are expressed in a coordinate system relative to the starting pose of the robot
     def odom_callback(self, msg):
         self.pose = msg.pose.pose # Store the pose in a class variable
-       
+        self.get_logger().info(f"current pose is: {self.pose}")
+
 
 
         # Uses tf_transformations package to convert orientation from quaternion to Euler angles (RPY = roll, pitch, yaw)
@@ -221,6 +232,12 @@ class RobotController(Node):
         self.scan_triggered[SCAN_BACK]  = min(back_ranges)  < SCAN_THRESHOLD
         self.scan_triggered[SCAN_RIGHT] = min(right_ranges) < SCAN_THRESHOLD
 
+
+    def control_permission_callback(self, msg):
+        if (msg.data):
+            self.state = State.FORWARD
+        else:
+            self.state = State.WAITING_TO_RUN
 
     # Control loop for the FSM - called periodically by self.timer
     def control_loop(self):
@@ -345,6 +362,9 @@ class RobotController(Node):
                 msg.angular.z = item.x / 320.0
                 self.cmd_vel_publisher.publish(msg)
 
+
+            case State.WAITING_TO_RUN:
+                print("waiting to run state")
 
             case _:
                 pass

@@ -14,12 +14,19 @@ def robot_controller_actions(context : LaunchContext):
 
     num_robots = int(context.launch_configurations['num_robots'])
         
-    yaml_path = os.path.join(get_package_share_directory('assessment'), 'config', 'initial_poses.yaml')
+    initial_loc_yaml_path = os.path.join(get_package_share_directory('assessment'), 'config', 'initial_poses.yaml')
+    initial_goal_yaml_path = os.path.join(get_package_share_directory('solution'), 'config', 'initial_nav_goal_poses.yaml')
 
-    with open(yaml_path, 'r') as f:
-        configuration = yaml.safe_load(f)
+    with open(initial_loc_yaml_path, 'r') as f:
+        initial_loc_configuration = yaml.safe_load(f)
 
-    initial_poses = configuration[num_robots]
+    with open(initial_goal_yaml_path, 'r') as f:
+        initial_goal_configuration = yaml.safe_load(f)
+
+
+    initial_poses = initial_loc_configuration[num_robots]
+    initial_goal_poses = initial_goal_configuration[1]
+
 
     actions = []
 
@@ -51,9 +58,12 @@ def robot_controller_actions(context : LaunchContext):
                 executable='simple_commander',
                 output='screen',
                 parameters=[ 
-                    {'initial_x': initial_poses[robot_name]['x']},
-                    {'initial_y': initial_poses[robot_name]['y']},
-                    {'initial_yaw': initial_poses[robot_name]['yaw']},
+                    {'initial_loc_x': initial_poses[robot_name]['x']},
+                    {'initial_loc_y': initial_poses[robot_name]['y']},
+                    {'initial_loc_yaw': initial_poses[robot_name]['yaw']},
+                    {'initial_goal_x': initial_goal_poses[robot_name]['x']},
+                    {'initial_goal_y': initial_goal_poses[robot_name]['y']},
+                    {'initial_goal_yaw': initial_goal_poses[robot_name]['yaw']},
                     {}]  
          )
             # Node(
