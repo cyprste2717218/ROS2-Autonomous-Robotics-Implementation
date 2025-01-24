@@ -22,7 +22,7 @@ from rclpy.qos import QoSPresetProfiles
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
 from std_msgs.msg import Float32
-from geometry_msgs.msg import Twist, Pose
+from geometry_msgs.msg import Twist, Pose, PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from assessment_interfaces.msg import Item, ItemList
@@ -32,9 +32,12 @@ from auro_interfaces.srv import ItemRequest
 from tf_transformations import euler_from_quaternion
 import angles
 
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+
 from enum import Enum
 import random
 import math
+
 
 LINEAR_VELOCITY  = 0.3 # Metres per second
 ANGULAR_VELOCITY = 0.5 # Radians per second
@@ -54,7 +57,23 @@ class State(Enum):
     FORWARD = 0
     TURNING = 1
     COLLECTING = 2
+    SET_GOAL = 3
 
+
+class SimpleCommander(Node):
+
+    def __init__(self):
+        super().__init__('simple_commander')
+
+        self.state = State.SET_GOAL
+
+        self.navigator = BasicNavigator()
+
+        initial_pose = PoseStamped()
+        initial_pose.header.frame_id = 'map'
+        initial_pose.header.stamp = self.get_clock().now().to_msg()
+        
+        # Define initial poses from initial_poses.yaml based on robot namespace
 
 class RobotController(Node):
 
