@@ -25,7 +25,8 @@ from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist, Pose
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
-from auro_interfaces.msg import StringWithPose, Item, ItemList
+from assessment_interfaces.msg import Item, ItemList
+from auro_interfaces.msg import StringWithPose
 from auro_interfaces.srv import ItemRequest
 
 from tf_transformations import euler_from_quaternion
@@ -154,9 +155,9 @@ class RobotController(Node):
         self.timer = self.create_timer(self.timer_period, self.control_loop, callback_group=timer_callback_group)
 
     def item_callback(self, msg):
-        self.items = msg.data
-        print(self.items)
-        self.state = State.COLLECTING
+
+        self.items.data = msg.data
+        
 
 
 
@@ -173,6 +174,8 @@ class RobotController(Node):
     # The pose estimates are expressed in a coordinate system relative to the starting pose of the robot
     def odom_callback(self, msg):
         self.pose = msg.pose.pose # Store the pose in a class variable
+       
+
 
         # Uses tf_transformations package to convert orientation from quaternion to Euler angles (RPY = roll, pitch, yaw)
         # https://github.com/DLu/tf_transformations
@@ -200,6 +203,8 @@ class RobotController(Node):
         # Group scan ranges into 4 segments
         # Front, left, and right segments are each 60 degrees
         # Back segment is 180 degrees
+
+
         front_ranges = msg.ranges[331:359] + msg.ranges[0:30] # 30 to 331 degrees (30 to -30 degrees)
         left_ranges  = msg.ranges[31:90] # 31 to 90 degrees (31 to 90 degrees)
         back_ranges  = msg.ranges[91:270] # 91 to 270 degrees (91 to -90 degrees)
@@ -228,11 +233,12 @@ class RobotController(Node):
         match self.state:
 
             case State.FORWARD:
-
+                self.get_logger().info(f"items: {self.items.data}")
                 if self.scan_triggered[SCAN_FRONT]:
                     
                     
                     self.previous_yaw = self.yaw
+
                     self.state = State.TURNING
                     self.turn_angle = random.uniform(150, 170)
                     self.turn_direction = random.choice([TURN_LEFT, TURN_RIGHT])
