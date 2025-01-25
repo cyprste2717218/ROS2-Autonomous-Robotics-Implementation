@@ -30,14 +30,21 @@ class CurrentNavGoal(Enum):
     WAYPOINTS = 3
 
 
+class PreviousNavGoal(Enum):
+    INITIAL_GOAL = 0
+    CENTER_MAP_GOAL = 1
+    WAYPOINTS = 3
+
 class SimpleCommander(Node):
 
     def __init__(self):
         super().__init__('simple_commander')
 
-        self.state = State.SET_GOAL
+        self.state = State.SET_INITIAL_GOAL
+       
 
         self.current_nav_goal = CurrentNavGoal.INITIAL_GOAL
+        self.previous_nav_goal = self.current_nav_goal
 
         # Current colour of item held
         self.current_item_held = ''
@@ -122,10 +129,16 @@ class SimpleCommander(Node):
                 self.state = State.SET_MAP_CENTER_GOAL
 
         def commander_permission_callback(self, msg):
-            if (msg.data):
+            if (msg.data) & (self.previous_nav_goal == CurrentNavGoal.INITIAL_GOAL):
                 self.state = State.SET_MAP_CENTER_GOAL
 
-            print('')
+            elif (msg.data) & (self.previous_nav_goal == CurrentNavGoal.WAYPOINTS):
+                # reversing waypoints to route back to center of map after item deposit
+                reversed_waypoints = list(reversed(self.waypoints))
+                self.waypoints = reversed_waypoints
+                self.state = State.SET_WAYPOINTS
+
+            
         
     def control_loop(self):
 
@@ -149,7 +162,9 @@ class SimpleCommander(Node):
                 center_map_goal_pose.position.y = 0.0
 
                 self.navigator.goToPose(center_map_goal_pose)
+                self.previous_nav_goal = self.current_nav_goal
                 self.current_nav_goal = CurrentNavGoal.CENTER_MAP_GOAL
+
                 self.state = State.NAVIGATING
             
             case State.SET_WAYPOINTS:
@@ -180,7 +195,8 @@ class SimpleCommander(Node):
                     if result == TaskResult.SUCCEEDED:
                         print('Goal succeeded!')
                         #need to check if the goal location was for the center and if so, to send a request to an action server to inform which robot is at the centre - to set this up properly see how the stuff to do with item collection/detection has been setup
-                        
+
+
                         match self.current_nav_goal: #To-do: move this match statement to function elsewhere for clarity purposes
                             case CurrentNavGoal.INITIAL_GOAL:
                                 # permit robot controller to do random search in area navigated to
@@ -193,14 +209,12 @@ class SimpleCommander(Node):
                                 # To-do: stuff to determine path with specific waypoints for relevant zone, likely need to create a function to call here,
 
                                 assigned_zone = self.determine_zone_for_item
-                                self.determine_waypoints_to_zone(assigned_zone)
-
+                                self.determine_waypoints_to_zone(assigned_zone, False)
+                               
                                 self.state = State.SET_WAYPOINTS
 
                             case CurrentNavGoal.WAYPOINTS:
                                 if (feedback.current_waypoint + 1) == len(self.waypoints):
-                                    
-                                    self.waypoints = []
                                     
                                     # Giving back control to robot controller to depoit item in zone, halting simple commander node operations temporarily
                                     msg = Bool()
@@ -219,7 +233,7 @@ class SimpleCommander(Node):
                         print('Goal has an invalid return status')
 
             case State.IDLE:
-                print('')
+                print('Simple commander currently in IDLE state')
 
             case _:
                 pass
@@ -247,7 +261,7 @@ class SimpleCommander(Node):
         return assigned_zone
     
     # To-do: ensure setting up function with both self and current_assinged_zone works and is a valid setup, am unsure if calling it with just current_assigned_zone will work as is currently what is being done
-    def determine_waypoints_to_zone(self, current_assigned_zone):
+    def determine_waypoints_to_zone(self, current_assigned_zone, reverse_waypoints):
         nav_to_zone_waypoints_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
 
         with open(nav_to_zone_waypoints_path, 'r') as f:
@@ -258,7 +272,11 @@ class SimpleCommander(Node):
         waypoint_2 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_2']
         waypoint_3 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_3']
 
-        raw_waypoint_poses = [waypoint_1, waypoint_2, waypoint_3]
+        if not(reverse_waypoints):
+            raw_waypoint_poses = [waypoint_1, waypoint_2, waypoint_3]
+
+        else:
+            raw_waypoint_poses = [waypoint_3, waypoint_2, waypoint_1]
 
         waypoint_poses = []
         pose = PoseStamped()
