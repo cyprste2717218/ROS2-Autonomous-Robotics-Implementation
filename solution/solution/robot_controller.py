@@ -61,6 +61,15 @@ class State(Enum):
     DROPPING_IN_ZONE = 3
     WAITING_TO_RUN = 4
 
+
+class PreviousState(Enum):
+    FORWARD = 0
+    TURNING = 1
+    COLLECTING = 2
+    DROPPING_IN_ZONE = 3
+    WAITING_TO_RUN = 4
+
+
 class RobotController(Node):
 
     def __init__(self):
@@ -68,6 +77,7 @@ class RobotController(Node):
         
         # Class variables used to store persistent values between executions of callbacks and control loop
         self.state = State.WAITING_TO_RUN # Current FSM state
+        self.previous_state = State.WAITING_TO_RUN
         self.pose = Pose() # Current pose (position and orientation), relative to the odom reference frame
         self.previous_pose = Pose() # Store a snapshot of the pose for comparison against future poses
         self.yaw = 0.0 # Angle the robot is facing (rotation around the Z axis, in radians), relative to the odom reference frame
@@ -236,7 +246,12 @@ class RobotController(Node):
 
     def control_permission_callback(self, msg):
         if (msg.data):
-            self.state = State.FORWARD
+            if (self.previous_state == State.COLLECTING):
+                self.previous_state = self.state
+                self.state = State.DROPPING_IN_ZONE
+            else:
+                self.previous_state = self.state
+                self.state = State.FORWARD
         else:
             self.state = State.WAITING_TO_RUN
 
@@ -261,6 +276,7 @@ class RobotController(Node):
                     
                     
                     self.previous_yaw = self.yaw
+                    self.previous_state = self.state
 
                     self.state = State.TURNING
                     self.turn_angle = random.uniform(150, 170)
@@ -271,6 +287,8 @@ class RobotController(Node):
                 
                 if self.scan_triggered[SCAN_LEFT] or self.scan_triggered[SCAN_RIGHT]:
                     self.previous_yaw = self.yaw
+                    self.previous_state = self.state
+                    
                     self.state = State.TURNING
                     self.turn_angle = 45
 
@@ -286,6 +304,7 @@ class RobotController(Node):
                     return
                 
                 if len(self.items.data) > 0:
+                    self.previous_state = self.state
                     self.state = State.COLLECTING
                     return
 
@@ -301,10 +320,11 @@ class RobotController(Node):
 
                 if distance_travelled >= self.goal_distance:
                     self.previous_yaw = self.yaw
+                    self.previous_state = self.state
                     self.state = State.TURNING
                     self.turn_angle = random.uniform(30, 150)
                     self.turn_direction = random.choice([TURN_LEFT, TURN_RIGHT])
-                    self.get_logger().info("Goal reached, turning " + ("left" if self.turn_direction == TURN_LEFT else "right") + f" by {self.turn_angle:.2f} degrees")
+                    self.get_logger().info("Random goal reached, turning " + ("left" if self.turn_direction == TURN_LEFT else "right") + f" by {self.turn_angle:.2f} degrees")
 
             case State.TURNING:
 
@@ -324,6 +344,7 @@ class RobotController(Node):
 
                 if math.fabs(yaw_difference) >= math.radians(self.turn_angle):
                     self.previous_pose = self.pose
+                    self.previous_state = self.state
                     self.goal_distance = random.uniform(1.0, 2.0)
                     self.state = State.FORWARD
                     self.get_logger().info(f"Finished turning, driving forward by {self.goal_distance:.2f} metres")
@@ -333,6 +354,7 @@ class RobotController(Node):
 
                 if len(self.items.data) == 0:
                     self.previous_pose = self.pose
+                    self.previous_state = self.state
                     self.state = State.FORWARD
                     return
                 
@@ -355,12 +377,18 @@ class RobotController(Node):
                             # Switching control back to simple_commander node to use nav2 to navigate to center of map
 
                             self.get_logger().info('Item picked up.')
+
+                            # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
+                            self.previous_state = self.state
+
                             self.state = State.WAITING_TO_RUN
                             self.items.data = []
 
                             msg = Bool()
                             msg.data = True
                             self.simple_commander_auth_publisher.publish(msg)
+
+
 
                         else:
                             self.get_logger().info('Unable to pick up item: ' + response.message)
@@ -374,6 +402,14 @@ class RobotController(Node):
 
             case State.DROPPING_IN_ZONE:
                 print('')
+
+                # create subscriber to zone_sensor topic to determine that only one zone is detected and its the correct one for the item type
+
+                # utilise the offload/item ROS service when we know we are in the zone
+
+                # check to see on /item_log if item of expected colour count has incremented (i.e. save value just before deposit attempt) and verify no other robot was in the zone according to rgb camera image data at least
+
+                # publish msg to simple_commander via relevant topic to inform it to trace back the waypoint to center followed by the initial location 
 
 
             case State.WAITING_TO_RUN:

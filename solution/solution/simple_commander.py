@@ -8,7 +8,7 @@ from rclpy.node import Node
 from rclpy.signals import SignalHandlerOptions
 from geometry_msgs.msg import Twist, Pose, PoseStamped
 from rclpy.executors import ExternalShutdownException
-from solution_interfaces.msg import AllowRobotControllerSearch
+from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleCommanderSearch
 from std_msgs.msg import Bool
 from assessment_interfaces.msg import ItemHolder, ItemHolders
 from ament_index_python.packages import get_package_share_directory
@@ -22,6 +22,7 @@ class State(Enum):
     SET_MAP_CENTER_GOAL = 1
     SET_WAYPOINTS = 2
     NAVIGATING = 3
+    IDLE = 4
 
 class CurrentNavGoal(Enum):
     INITIAL_GOAL = 0
@@ -77,6 +78,15 @@ class SimpleCommander(Node):
             10
         )
 
+        # Defining subscriber to /commander_permission topic to determine permission for commander node to resume control
+
+        self.simple_commander_auth_subscriber = self.create_subscription(
+            AllowSimpleCommanderSearch,
+            'commander_permission',
+            self.commander_permission_callback,
+            10
+        )
+
 
         # Defining publisher for use in controlling navigation state i.e. only robot_controller or simple_commander nodes or both simultaneously
 
@@ -111,7 +121,11 @@ class SimpleCommander(Node):
                 self.current_item_held = held_item.item_colour
                 self.state = State.SET_MAP_CENTER_GOAL
 
+        def commander_permission_callback(self, msg):
+            if (msg.data):
+                self.state = State.SET_MAP_CENTER_GOAL
 
+            print('')
         
     def control_loop(self):
 
@@ -181,13 +195,21 @@ class SimpleCommander(Node):
                                 assigned_zone = self.determine_zone_for_item
                                 self.determine_waypoints_to_zone(assigned_zone)
 
-                                # Return to initial goal location to find another item to pick up and repeat cycle
-                                self.state = State.SET_INITIAL_GOAL
+                                self.state = State.SET_WAYPOINTS
 
                             case CurrentNavGoal.WAYPOINTS:
                                 if (feedback.current_waypoint + 1) == len(self.waypoints):
+                                    
                                     self.waypoints = []
-                                    self.state = State.SET_INITIAL_GOAL
+                                    
+                                    # Giving back control to robot controller to depoit item in zone, halting simple commander node operations temporarily
+                                    msg = Bool()
+                                    msg.data = True
+                                    self.robot_controller_auth_publisher.publish(msg)
+
+                                    self.State = State.IDLE
+
+                                    
 
                     elif result == TaskResult.CANCELED:
                         print('Goal was canceled!')
@@ -195,6 +217,9 @@ class SimpleCommander(Node):
                         print('Goal failed!')
                     else:
                         print('Goal has an invalid return status')
+
+            case State.IDLE:
+                print('')
 
             case _:
                 pass
