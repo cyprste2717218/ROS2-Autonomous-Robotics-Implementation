@@ -1,13 +1,61 @@
 # Waypoints for navigating to specific zones from center of map
 
-1:
-  cyan:
-    waypoint_1: "red"
 
-  purple:
-    assigned_item_type: "green"
+#NEED TO DETERMINE THESE - CURRENTLY PLACEHOLDER VALUES
+cyan:
+  waypoint_1:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_2:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_3:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
 
-  green:
-    assigned_item_type: "blue"
+purple:
+  waypoint_1:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_2:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_3:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+
+green:
+  waypoint_1:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_2:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_3:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+
+pink:
+  waypoint_1:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_2:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
+  waypoint_3:
+    x:  -3.5
+    y:   0.0
+    yaw: 0.0
 
 
