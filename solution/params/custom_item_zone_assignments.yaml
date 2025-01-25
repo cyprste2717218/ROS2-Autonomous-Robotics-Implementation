@@ -1,41 +1,32 @@
 # Different robot item type and zone assignment configurations
 
 1:
-  robot1:
+  cyan:
     assigned_item_type: "red"
-    assigned_zone: "cyan"
 
-  robot2:
+  purple:
     assigned_item_type: "green"
-    assigned_zone: "purple"
 
-  robot3:
+  green:
     assigned_item_type: "blue"
-    assigned_zone: "green"
 
 
 2:
-  robot1:
+  purple:
     assigned_item_type: "green"
-    assigned_zone: "purple"
 
-  robot2:
+  cyan:
     assigned_item_type: "red"
-    assigned_zone: "cyan"
 
-  robot3:
+  pink:
     assigned_item_type: "blue"
-    assigned_zone: "pink"
 
 3:
-  robot1:
+  green:
     assigned_item_type: "blue"
-    assigned_zone: "green"
 
-  robot2:
+  cyan:
     assigned_item_type: "red"
-    assigned_zone: "cyan"
 
-  robot3:
+  purple:
     assigned_item_type: "green"
-    assigned_zone: "purple"

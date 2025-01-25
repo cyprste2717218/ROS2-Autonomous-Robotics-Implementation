@@ -90,6 +90,7 @@ class SimpleCommander(Node):
 
                     if result == TaskResult.SUCCEEDED:
                         print('Goal succeeded!')
+                        #need to check if the goal location was for the center and if so, to send a request to an action server to inform which robot is at the centre - to set this up properly see how the stuff to do with item collection/detection has been setup
                         
                         # permit robot controller to do random search in area navigated to
                         self.give_robot_controller_auth()
