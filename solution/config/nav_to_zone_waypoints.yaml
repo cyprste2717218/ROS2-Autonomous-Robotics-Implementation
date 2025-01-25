@@ -1,0 +1,13 @@
+# Waypoints for navigating to specific zones from center of map
+
+1:
+  cyan:
+    waypoint_1: "red"
+
+  purple:
+    assigned_item_type: "green"
+
+  green:
+    assigned_item_type: "blue"
+
+
