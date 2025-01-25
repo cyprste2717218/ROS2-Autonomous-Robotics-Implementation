@@ -113,7 +113,7 @@ class SimpleCommander(Node):
 
         self.navigator.waitUntilNav2Active()
 
-        self.timer_period = 0.1
+        self.timer_period = 3
         self.timer = self.create_timer(self.timer_period, self.control_loop)
         
 
@@ -141,6 +141,8 @@ class SimpleCommander(Node):
             
         
     def control_loop(self):
+        
+        print(f"Simple Commander Node State: {self.state} Current Nav Goal: {self.current_nav_goal}")
 
         match self.state:
 
@@ -156,10 +158,10 @@ class SimpleCommander(Node):
             
             case State.SET_MAP_CENTER_GOAL:
                 center_map_goal_pose = PoseStamped()
-                center_map_goal_pose.frame_id = 'map'
-                center_map_goal_pose.stamp = self.get_clock().now().to_msg()
-                center_map_goal_pose.position.x = 0.0  #TO-DO: figure out center of map coordinates
-                center_map_goal_pose.position.y = 0.0
+                center_map_goal_pose.header.frame_id = 'map'
+                center_map_goal_pose.header.stamp = self.get_clock().now().to_msg()
+                center_map_goal_pose.pose.position.x = 0.0  
+                center_map_goal_pose.pose.position.y = 0.0
 
                 self.navigator.goToPose(center_map_goal_pose)
                 self.previous_nav_goal = self.current_nav_goal
@@ -195,16 +197,25 @@ class SimpleCommander(Node):
                     if result == TaskResult.SUCCEEDED:
                         print('Goal succeeded!')
                         #need to check if the goal location was for the center and if so, to send a request to an action server to inform which robot is at the centre - to set this up properly see how the stuff to do with item collection/detection has been setup
-
+                        
+                        
 
                         match self.current_nav_goal: #To-do: move this match statement to function elsewhere for clarity purposes
                             case CurrentNavGoal.INITIAL_GOAL:
+                                
+                                # Cancelling task to prevent reoccurring success messages when control loop is called
+                                self.navigator.cancelTask()
+
                                 # permit robot controller to do random search in area navigated to
 
                                 msg = Bool()
                                 msg.data = True
                                 self.robot_controller_auth_publisher.publish(msg)
                             case CurrentNavGoal.CENTER_MAP_GOAL:
+
+                                # Cancelling task to prevent reoccurring success messages when control loop is called
+                                self.navigator.cancelTask()
+
                                 print('')
                                 # To-do: stuff to determine path with specific waypoints for relevant zone, likely need to create a function to call here,
 
@@ -216,6 +227,9 @@ class SimpleCommander(Node):
                             case CurrentNavGoal.WAYPOINTS:
                                 if (feedback.current_waypoint + 1) == len(self.waypoints):
                                     
+                                    # Cancelling task to prevent reoccurring success messages when control loop is called
+                                    self.navigator.cancelTask()
+
                                     # Giving back control to robot controller to depoit item in zone, halting simple commander node operations temporarily
                                     msg = Bool()
                                     msg.data = True
@@ -238,14 +252,6 @@ class SimpleCommander(Node):
             case _:
                 pass
     
-    def give_robot_controller_auth(self):
-        """
-        Publishes Bool value True as authorisation for robot controller node to command control of robot.
-        """
-        msg = Bool()
-        msg.data = True
-        self.robot_controller_auth_publisher.publish(msg)
-
     def determine_zone_for_item(self):
         # Interface with item_zone_assignments.yaml config file to determine the assigned zone to deposit item
         print('')

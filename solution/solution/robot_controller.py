@@ -46,7 +46,7 @@ ANGULAR_VELOCITY = 0.5 # Radians per second
 TURN_LEFT = 1 # Postive angular velocity turns left
 TURN_RIGHT = -1 # Negative angular velocity turns right
 
-SCAN_THRESHOLD = 0.5 # Metres per second
+SCAN_THRESHOLD = 0.9 # Metres per second
  # Array indexes for sensor sectors
 SCAN_FRONT = 0
 SCAN_LEFT = 1
@@ -84,7 +84,7 @@ class RobotController(Node):
         self.previous_yaw = 0.0 # Snapshot of the angle for comparison against future angles
         self.turn_angle = 0.0 # Relative angle to turn to in the TURNING state
         self.turn_direction = TURN_LEFT # Direction to turn in the TURNING state
-        self.goal_distance = random.uniform(1.0, 2.0) # Goal distance to travel in FORWARD state
+        self.goal_distance = random.uniform(0.3, 0.6) # Goal distance to travel in FORWARD state
         self.scan_triggered = [False] * 4 # Boolean value for each of the 4 LiDAR sensor sectors. True if obstacle detected within SCAN_THRESHOLD
         self.items = ItemList()
 
@@ -363,7 +363,7 @@ class RobotController(Node):
                 # Obtained by curve fitting from experimental runs.
                 estimated_distance = 32.4 * float(item.diameter) ** -0.75 #69.0 * float(item.diameter) ** -0.89
 
-                self.get_logger().info(f'Estimated distance {estimated_distance}')
+                self.get_logger().info(f'Item Estimated distance {estimated_distance}')
 
                 if estimated_distance <= 0.35:
                     rqt = ItemRequest.Request()
