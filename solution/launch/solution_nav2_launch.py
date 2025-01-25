@@ -64,7 +64,7 @@ def robot_controller_actions(context : LaunchContext):
                     {'initial_goal_x': initial_goal_poses[robot_name]['x']},
                     {'initial_goal_y': initial_goal_poses[robot_name]['y']},
                     {'initial_goal_yaw': initial_goal_poses[robot_name]['yaw']},
-                    {}]  
+                    {'robot_name': robot_name}]  
          )
             # Node(
             #     package='turtlebot3_gazebo',

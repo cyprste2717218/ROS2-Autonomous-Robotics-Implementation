@@ -21,14 +21,14 @@ from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.qos import QoSPresetProfiles
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool
 from geometry_msgs.msg import Twist, Pose, PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from assessment_interfaces.msg import Item, ItemList
 from auro_interfaces.msg import StringWithPose
 from auro_interfaces.srv import ItemRequest
-from solution_interfaces.msg import AllowRobotControllerSearch
+from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleCommanderSearch
 
 from tf_transformations import euler_from_quaternion
 import angles
@@ -59,6 +59,7 @@ class State(Enum):
     TURNING = 1
     COLLECTING = 2
     WAITING_TO_RUN = 3
+
 
 
 
@@ -164,6 +165,10 @@ class RobotController(Node):
         # http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/Marker.html
         # http://wiki.ros.org/rviz/DisplayTypes/Marker
         self.marker_publisher = self.create_publisher(StringWithPose, 'marker_input', 10, callback_group=timer_callback_group)
+
+        # Defining publisher for use in controlling navigation state i.e. only robot_controller or simple_commander nodes or both simultaneously
+
+        self.simple_commander_auth_publisher = self.create_publisher(AllowSimpleCommanderSearch, 'commander_permission', 1)
 
         # Creates a timer that calls the control_loop method repeatedly - each loop represents single iteration of the FSM
         self.timer_period = 0.1 # 100 milliseconds = 10 Hz
@@ -329,6 +334,7 @@ class RobotController(Node):
 
             case State.COLLECTING:
 
+
                 if len(self.items.data) == 0:
                     self.previous_pose = self.pose
                     self.state = State.FORWARD
@@ -349,9 +355,17 @@ class RobotController(Node):
                         self.executor.spin_until_future_complete(future)
                         response = future.result()
                         if response.success:
+
+                            # Switching control back to simple_commander node to use nav2 to navigate to center of map
+
                             self.get_logger().info('Item picked up.')
-                            self.state = State.FORWARD
+                            self.state = State.WAITING_TO_RUN
                             self.items.data = []
+                            
+                            msg = Bool()
+                            msg.data = True
+                            self.simple_commander_auth_publisher.publish(msg)
+
                         else:
                             self.get_logger().info('Unable to pick up item: ' + response.message)
                     except Exception as e:

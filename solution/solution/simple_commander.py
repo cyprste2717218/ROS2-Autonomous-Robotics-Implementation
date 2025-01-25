@@ -7,6 +7,7 @@ from geometry_msgs.msg import Twist, Pose, PoseStamped
 from rclpy.executors import ExternalShutdownException
 from solution_interfaces.msg import AllowRobotControllerSearch
 from std_msgs.msg import Bool
+from assessment_interfaces.msg import ItemHolder, ItemHolders
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -14,7 +15,9 @@ from enum import Enum
 
 class State(Enum):
     SET_GOAL = 0
-    NAVIGATING = 1
+    SET_MAP_CENTER_GOAL = 1
+    NAVIGATING = 2
+    
 
 class SimpleCommander(Node):
 
@@ -25,7 +28,10 @@ class SimpleCommander(Node):
 
         self.navigator = BasicNavigator()
 
-        # Defining params for initial location and first goal point to reach
+        # Defining params for initial location, first goal point to reach and robot_name
+        self.declare_parameter('robot_name', 'robot1')
+        self.robot_name = self.get_parameter('robot_name').value
+
         self.declare_parameter('initial_loc_x', 0.0)
         self.initial_x = self.get_parameter('initial_loc_x').value
 
@@ -44,6 +50,16 @@ class SimpleCommander(Node):
 
         self.declare_parameter('initial_goal_yaw', 0.0)
         self.initial_goal_yaw = self.get_parameter('initial_goal_yaw').value
+
+        # Defining subscriber to /item_holders topic to verify current robot is holding an item
+
+        self.item__holder_subscriber = self.create_subscription(
+            ItemHolders,
+            'items_holders',
+            self.item_holder_callback,
+            10
+        )
+
 
         # Defining publisher for use in controlling navigation state i.e. only robot_controller or simple_commander nodes or both simultaneously
 
@@ -66,6 +82,17 @@ class SimpleCommander(Node):
         self.timer_period = 0.1
         self.timer = self.create_timer(self.timer_period, self.control_loop)
         
+
+        # Subscriber callbacks here
+
+        def item_holder_callback(self, msg):
+
+            info = msg.data
+
+            if (info.robot_id == self.robot_name):
+                self.state = State.SET_MAP_CENTER_GOAL
+
+
         
     def control_loop(self):
 
@@ -80,6 +107,9 @@ class SimpleCommander(Node):
 
                 self.navigator.goToPose(goal_pose)
             
+            case State.SET_MAP_CENTER_GOAL:
+                center_map_goal_pose = PoseStamped()
+            
             case State.NAVIGATING:
 
                 if not self.navigator.isTaskComplete():
@@ -93,7 +123,10 @@ class SimpleCommander(Node):
                         #need to check if the goal location was for the center and if so, to send a request to an action server to inform which robot is at the centre - to set this up properly see how the stuff to do with item collection/detection has been setup
                         
                         # permit robot controller to do random search in area navigated to
-                        self.give_robot_controller_auth()
+
+                        msg = Bool()
+                        msg.data = True
+                        self.robot_controller_auth_publisher.publish(msg)
 
                     elif result == TaskResult.CANCELED:
                         print('Goal was canceled!')
