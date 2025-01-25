@@ -159,6 +159,9 @@ class SimpleCommander(Node):
                                 print('')
                                 # To-do: stuff to determine path with specific waypoints for relevant zone, likely need to create a function to call here,
 
+                                assigned_zone = self.determine_zone_for_item
+                                self.determine_waypoints_to_zone(assigned_zone)
+
                                 # Return to initial goal location to find another item to pick up and repeat cycle
                                 self.state = State.SET_INITIAL_GOAL
 
@@ -193,6 +196,23 @@ class SimpleCommander(Node):
         assigned_zone = zone_assignment_configuration[1][self.current_item_held]['zone']
         
         return assigned_zone
+    
+    # To-do: ensure setting up function with both self and current_assinged_zone works and is a valid setup, am unsure if calling it with just current_assigned_zone will work as is currently what is being done
+    def determine_waypoints_to_zone(self, current_assigned_zone):
+        nav_to_zone_waypoints_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
+
+        with open(nav_to_zone_waypoints_path, 'r') as f:
+            nav_to_zone_waypoints_configuration = yaml.safe_load(f)
+
+        waypoint_1 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_1']
+        waypoint_2 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_2']
+        waypoint_3 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_3']
+
+        waypoints = {'first_waypoint': waypoint_1,
+                     'second_waypoint': waypoint_2,
+                     'third_waypoint': waypoint_3}
+
+        return waypoints
 
     def destroy_node(self):
         self.get_logger().info(f"Shutting down Simple Commander node")
