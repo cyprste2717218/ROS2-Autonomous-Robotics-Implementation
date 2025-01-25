@@ -88,7 +88,7 @@ class SimpleCommander(Node):
         # Defining subscriber to /commander_permission topic to determine permission for commander node to resume control
 
         self.simple_commander_auth_subscriber = self.create_subscription(
-            AllowSimpleCommanderSearch,
+            Bool,
             'commander_permission',
             self.commander_permission_callback,
             10
@@ -97,7 +97,7 @@ class SimpleCommander(Node):
 
         # Defining publisher for use in controlling navigation state i.e. only robot_controller or simple_commander nodes or both simultaneously
 
-        self.robot_controller_auth_publisher = self.create_publisher(AllowRobotControllerSearch, 'controller_permission', 1)
+        self.robot_controller_auth_publisher = self.create_publisher(Bool, 'controller_permission', 1)
 
 
         # Define initial poses from initial_poses.yaml based on robot namespace
@@ -119,16 +119,16 @@ class SimpleCommander(Node):
 
         # Subscriber callbacks here
 
-        def item_holder_callback(self, msg):
+    def item_holder_callback(self, msg):
 
-            held_item = msg.data
+        held_item = msg.data
 
-            if (held_item.robot_id == self.robot_name) & (held_item.holding_item):
+        if (held_item.robot_id == self.robot_name) & (held_item.holding_item):
 
-                self.current_item_held = held_item.item_colour
-                self.state = State.SET_MAP_CENTER_GOAL
+            self.current_item_held = held_item.item_colour
+            self.state = State.SET_MAP_CENTER_GOAL
 
-        def commander_permission_callback(self, msg):
+    def commander_permission_callback(self, msg):
             if (msg.data) & (self.previous_nav_goal == CurrentNavGoal.INITIAL_GOAL):
                 self.state = State.SET_MAP_CENTER_GOAL
 

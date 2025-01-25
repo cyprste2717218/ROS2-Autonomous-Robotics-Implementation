@@ -148,7 +148,7 @@ class RobotController(Node):
 
 
         self.control_permission_subscriber = self.create_subscription(
-            AllowRobotControllerSearch,
+            Bool,
             'controller_permission',
             self.control_permission_callback,
             1, callback_group=timer_callback_group
@@ -174,7 +174,7 @@ class RobotController(Node):
 
         # Defining publisher for use in controlling navigation state i.e. only robot_controller or simple_commander nodes or both simultaneously
 
-        self.simple_commander_auth_publisher = self.create_publisher(AllowSimpleCommanderSearch, 'commander_permission', 1)
+        self.simple_commander_auth_publisher = self.create_publisher(Bool, 'commander_permission', 1)
 
         # Creates a timer that calls the control_loop method repeatedly - each loop represents single iteration of the FSM
         self.timer_period = 0.1 # 100 milliseconds = 10 Hz
