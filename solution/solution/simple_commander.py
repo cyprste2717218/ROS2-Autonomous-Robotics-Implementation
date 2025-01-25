@@ -1,4 +1,7 @@
 import sys
+import os
+import yaml
+
 
 import rclpy
 from rclpy.node import Node
@@ -8,16 +11,22 @@ from rclpy.executors import ExternalShutdownException
 from solution_interfaces.msg import AllowRobotControllerSearch
 from std_msgs.msg import Bool
 from assessment_interfaces.msg import ItemHolder, ItemHolders
+from ament_index_python.packages import get_package_share_directory
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
 from enum import Enum
 
 class State(Enum):
-    SET_GOAL = 0
+    SET_INITIAL_GOAL = 0
     SET_MAP_CENTER_GOAL = 1
     NAVIGATING = 2
     
+class CurrentNavGoal(Enum):
+    INITIAL_GOAL = 0
+    CENTER_MAP_GOAL = 1
+    WAYPOINTS = 3
+
 
 class SimpleCommander(Node):
 
@@ -25,6 +34,11 @@ class SimpleCommander(Node):
         super().__init__('simple_commander')
 
         self.state = State.SET_GOAL
+
+        self.current_nav_goal = CurrentNavGoal.INITIAL_GOAL
+
+        # Current colour of item held
+        self.current_item_held = ''
 
         self.navigator = BasicNavigator()
 
@@ -87,9 +101,11 @@ class SimpleCommander(Node):
 
         def item_holder_callback(self, msg):
 
-            info = msg.data
+            held_item = msg.data
 
-            if (info.robot_id == self.robot_name):
+            if (held_item.robot_id == self.robot_name) & (held_item.holding_item):
+
+                self.current_item_held = held_item.item_colour
                 self.state = State.SET_MAP_CENTER_GOAL
 
 
@@ -98,7 +114,7 @@ class SimpleCommander(Node):
 
         match self.state:
 
-            case State.SET_GOAL:
+            case State.SET_INITIAL_GOAL:
                 goal_pose = PoseStamped()
                 goal_pose.header.frame_id = 'map'
                 goal_pose.header.stamp = self.get_clock().now().to_msg()
@@ -116,7 +132,9 @@ class SimpleCommander(Node):
                 center_map_goal_pose.position.y = 0.0
 
                 self.navigator.goToPose(center_map_goal_pose)
+                self.current_nav_goal = CurrentNavGoal.CENTER_MAP_GOAL
                 self.state = State.NAVIGATING
+              
             
             case State.NAVIGATING:
 
@@ -130,11 +148,19 @@ class SimpleCommander(Node):
                         print('Goal succeeded!')
                         #need to check if the goal location was for the center and if so, to send a request to an action server to inform which robot is at the centre - to set this up properly see how the stuff to do with item collection/detection has been setup
                         
-                        # permit robot controller to do random search in area navigated to
+                        match self.current_nav_goal: #To-do: move this match statement to function elsewhere for clarity purposes
+                            case CurrentNavGoal.INITIAL_GOAL:
+                                # permit robot controller to do random search in area navigated to
 
-                        msg = Bool()
-                        msg.data = True
-                        self.robot_controller_auth_publisher.publish(msg)
+                                msg = Bool()
+                                msg.data = True
+                                self.robot_controller_auth_publisher.publish(msg)
+                            case CurrentNavGoal.CENTER_MAP_GOAL:
+                                print('')
+                                # To-do: stuff to determine path with specific waypoints for relevant zone, likely need to create a function to call here,
+
+                                # Return to initial goal location to find another item to pick up and repeat cycle
+                                self.state = State.SET_INITIAL_GOAL
 
                     elif result == TaskResult.CANCELED:
                         print('Goal was canceled!')
@@ -153,6 +179,20 @@ class SimpleCommander(Node):
         msg = Bool()
         msg.data = True
         self.robot_controller_auth_publisher.publish(msg)
+
+    def determine_zone_for_item(self):
+        # Interface with item_zone_assignments.yaml config file to determine the assigned zone to deposit item
+        print('')
+
+        zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
+
+        with open(zone_assignment_path, 'r') as f:
+            zone_assignment_configuration = yaml.safe_load(f)
+
+        #To-Do: need to make nav2 launch file allow for configuration of different assignemtns of zones to item colours as provided in item_zone_assignments.yaml, sticking with hardcoded config of index 1 for now
+        assigned_zone = zone_assignment_configuration[1][self.current_item_held]['zone']
+        
+        return assigned_zone
 
     def destroy_node(self):
         self.get_logger().info(f"Shutting down Simple Commander node")
