@@ -2,7 +2,7 @@ import sys
 import os
 import yaml
 
-
+import copy
 import rclpy
 from rclpy.node import Node
 from rclpy.signals import SignalHandlerOptions
@@ -20,8 +20,9 @@ from enum import Enum
 class State(Enum):
     SET_INITIAL_GOAL = 0
     SET_MAP_CENTER_GOAL = 1
-    NAVIGATING = 2
-    
+    SET_WAYPOINTS = 2
+    NAVIGATING = 3
+
 class CurrentNavGoal(Enum):
     INITIAL_GOAL = 0
     CENTER_MAP_GOAL = 1
@@ -39,6 +40,8 @@ class SimpleCommander(Node):
 
         # Current colour of item held
         self.current_item_held = ''
+        
+        self.waypoints = []
 
         self.navigator = BasicNavigator()
 
@@ -134,7 +137,10 @@ class SimpleCommander(Node):
                 self.navigator.goToPose(center_map_goal_pose)
                 self.current_nav_goal = CurrentNavGoal.CENTER_MAP_GOAL
                 self.state = State.NAVIGATING
-              
+            
+            case State.SET_WAYPOINTS:
+                self.navigator.followWaypoints(self.waypoints)
+                self.state = State.NAVIGATING
             
             case State.NAVIGATING:
 
@@ -204,15 +210,23 @@ class SimpleCommander(Node):
         with open(nav_to_zone_waypoints_path, 'r') as f:
             nav_to_zone_waypoints_configuration = yaml.safe_load(f)
 
+
         waypoint_1 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_1']
         waypoint_2 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_2']
         waypoint_3 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_3']
 
-        waypoints = {'first_waypoint': waypoint_1,
-                     'second_waypoint': waypoint_2,
-                     'third_waypoint': waypoint_3}
+        raw_waypoint_poses = [waypoint_1, waypoint_2, waypoint_3]
 
-        return waypoints
+        waypoint_poses = []
+        pose = PoseStamped()
+        pose.header.frame_id = 'map'
+        pose.header.stamp = self.navigator.get_clock().now().to_msg()
+        for wp in raw_waypoint_poses:
+            pose.pose.position.x = wp[0]['x']
+            pose.pose.position.y = wp[1]['y']
+            waypoint_poses.append(copy.deepcopy(pose))
+        
+        self.waypoints = waypoint_poses
 
     def destroy_node(self):
         self.get_logger().info(f"Shutting down Simple Commander node")
