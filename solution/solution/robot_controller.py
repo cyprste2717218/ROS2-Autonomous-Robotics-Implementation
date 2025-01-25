@@ -77,7 +77,7 @@ class RobotController(Node):
         
         # Class variables used to store persistent values between executions of callbacks and control loop
         self.state = State.WAITING_TO_RUN # Current FSM state
-        self.previous_state = State.WAITING_TO_RUN
+        self.previous_state = self.state
         self.pose = Pose() # Current pose (position and orientation), relative to the odom reference frame
         self.previous_pose = Pose() # Store a snapshot of the pose for comparison against future poses
         self.yaw = 0.0 # Angle the robot is facing (rotation around the Z axis, in radians), relative to the odom reference frame
