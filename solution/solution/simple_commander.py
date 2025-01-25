@@ -106,9 +106,17 @@ class SimpleCommander(Node):
                 goal_pose.pose.position.y = self.initial_goal_y
 
                 self.navigator.goToPose(goal_pose)
+                self.state = State.NAVIGATING
             
             case State.SET_MAP_CENTER_GOAL:
                 center_map_goal_pose = PoseStamped()
+                center_map_goal_pose.frame_id = 'map'
+                center_map_goal_pose.stamp = self.get_clock().now().to_msg()
+                center_map_goal_pose.position.x = 0.0  #TO-DO: figure out center of map coordinates
+                center_map_goal_pose.position.y = 0.0
+
+                self.navigator.goToPose(center_map_goal_pose)
+                self.state = State.NAVIGATING
             
             case State.NAVIGATING:
 
