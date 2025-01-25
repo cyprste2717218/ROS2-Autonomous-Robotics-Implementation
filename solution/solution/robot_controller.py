@@ -58,12 +58,8 @@ class State(Enum):
     FORWARD = 0
     TURNING = 1
     COLLECTING = 2
-    WAITING_TO_RUN = 3
-
-
-
-
- 
+    DROPPING_IN_ZONE = 3
+    WAITING_TO_RUN = 4
 
 class RobotController(Node):
 
@@ -361,7 +357,7 @@ class RobotController(Node):
                             self.get_logger().info('Item picked up.')
                             self.state = State.WAITING_TO_RUN
                             self.items.data = []
-                            
+
                             msg = Bool()
                             msg.data = True
                             self.simple_commander_auth_publisher.publish(msg)
@@ -375,6 +371,9 @@ class RobotController(Node):
                 msg.linear.x = 0.25 * estimated_distance
                 msg.angular.z = item.x / 320.0
                 self.cmd_vel_publisher.publish(msg)
+
+            case State.DROPPING_IN_ZONE:
+                print('')
 
 
             case State.WAITING_TO_RUN:

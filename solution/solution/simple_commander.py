@@ -139,6 +139,8 @@ class SimpleCommander(Node):
                 self.state = State.NAVIGATING
             
             case State.SET_WAYPOINTS:
+                # To-Do: implement nav_start if can get below logic for cancelling task for robot to work
+                # nav_start = self.navigator.get_clock().now()
                 self.navigator.followWaypoints(self.waypoints)
                 self.state = State.NAVIGATING
             
@@ -146,6 +148,17 @@ class SimpleCommander(Node):
 
                 if not self.navigator.isTaskComplete():
                     feedback = self.navigator.getFeedback()
+                    
+                    # Logging current waypoint if waypoints are being followed
+                    if (len(self.waypoints) > 0):
+                        self.navigator.get_logger().info('Executing current waypoint: ' + str(feedback.current_waypoint + 1) + '/' + str(len(self.waypoints)))
+                        
+                        # Cancelling task if robot gets stuck after max period time (need to refactor most likely to make this work properly with rest of control logic)
+
+                        """ now = self.navigator.get_clock().now()
+
+                        if now - nav_start > Duration(seconds=500.0):
+                            self.navigator.cancelTask() """
                 else:
 
                     result = self.navigator.getResult()
@@ -170,6 +183,11 @@ class SimpleCommander(Node):
 
                                 # Return to initial goal location to find another item to pick up and repeat cycle
                                 self.state = State.SET_INITIAL_GOAL
+
+                            case CurrentNavGoal.WAYPOINTS:
+                                if (feedback.current_waypoint + 1) == len(self.waypoints):
+                                    self.waypoints = []
+                                    self.state = State.SET_INITIAL_GOAL
 
                     elif result == TaskResult.CANCELED:
                         print('Goal was canceled!')
