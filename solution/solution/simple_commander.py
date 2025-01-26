@@ -12,6 +12,7 @@ from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleComma
 from std_msgs.msg import Bool
 from assessment_interfaces.msg import ItemHolder, ItemHolders
 from ament_index_python.packages import get_package_share_directory
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -48,6 +49,7 @@ class SimpleCommander(Node):
 
         # Current colour of item held
         self.current_item_held = ''
+        self.already_holding_item = False
         
         self.waypoints = []
 
@@ -76,13 +78,18 @@ class SimpleCommander(Node):
         self.declare_parameter('initial_goal_yaw', 0.0)
         self.initial_goal_yaw = self.get_parameter('initial_goal_yaw').value
 
+
+        client_callback_group = MutuallyExclusiveCallbackGroup()
+        timer_callback_group = MutuallyExclusiveCallbackGroup()
+
+
         # Defining subscriber to /item_holders topic to verify current robot is holding an item
 
         self.item__holder_subscriber = self.create_subscription(
             ItemHolders,
-            'items_holders',
+            '/item_holders',
             self.item_holder_callback,
-            10
+            10, callback_group=timer_callback_group
         )
 
         # Defining subscriber to /commander_permission topic to determine permission for commander node to resume control
@@ -91,7 +98,7 @@ class SimpleCommander(Node):
             Bool,
             'commander_permission',
             self.commander_permission_callback,
-            10
+            1, callback_group=timer_callback_group
         )
 
 
@@ -113,20 +120,28 @@ class SimpleCommander(Node):
 
         self.navigator.waitUntilNav2Active()
 
-        self.timer_period = 3
-        self.timer = self.create_timer(self.timer_period, self.control_loop)
+        self.timer_period = 3.0
+        self.timer = self.create_timer(self.timer_period, self.control_loop, callback_group=timer_callback_group)
         
 
         # Subscriber callbacks here
 
     def item_holder_callback(self, msg):
+        #print("item holder callback not being called")
+        held_item = msg.data[-1]
+        print(f"this is the held_item {held_item}")
+        if (held_item.robot_id == self.robot_name) & (held_item.holding_item) & (not(self.already_holding_item)):
 
-        held_item = msg.data
+            self.already_holding_item = True
 
-        if (held_item.robot_id == self.robot_name) & (held_item.holding_item):
+            current_item_held = held_item.item_colour
+            parsed_current_item_held = current_item_held.lower()
+            self.current_item_held = parsed_current_item_held
 
-            self.current_item_held = held_item.item_colour
+            print(f"currently held item colour is: {self.current_item_held}")
             self.state = State.SET_MAP_CENTER_GOAL
+        if held_item.holding_item == False:
+            self.already_holding_item = False
 
     def commander_permission_callback(self, msg):
             if (msg.data) & (self.previous_nav_goal == CurrentNavGoal.INITIAL_GOAL):
@@ -172,6 +187,7 @@ class SimpleCommander(Node):
             case State.SET_WAYPOINTS:
                 # To-Do: implement nav_start if can get below logic for cancelling task for robot to work
                 # nav_start = self.navigator.get_clock().now()
+                print("following waypoints")
                 self.navigator.followWaypoints(self.waypoints)
                 self.state = State.NAVIGATING
             
@@ -216,11 +232,13 @@ class SimpleCommander(Node):
                                 # Cancelling task to prevent reoccurring success messages when control loop is called
                                 self.navigator.cancelTask()
 
-                                print('')
                                 # To-do: stuff to determine path with specific waypoints for relevant zone, likely need to create a function to call here,
+                                
+                                print('before getting assigned zone')
+                                assigned_zone = self.determine_zone_for_item()
+                                print('aftergetting assigned zone')
 
-                                assigned_zone = self.determine_zone_for_item
-                                self.determine_waypoints_to_zone(assigned_zone, False)
+                                self.determine_waypoints_to_zone(assigned_zone)
                                
                                 self.state = State.SET_WAYPOINTS
 
@@ -254,43 +272,49 @@ class SimpleCommander(Node):
     
     def determine_zone_for_item(self):
         # Interface with item_zone_assignments.yaml config file to determine the assigned zone to deposit item
-        print('')
+        print("determine zone for items func is actually called")      
 
         zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
 
         with open(zone_assignment_path, 'r') as f:
             zone_assignment_configuration = yaml.safe_load(f)
 
+        print("gets to here in determine zone for items func")
+        print(f"these are the params passed: {self.current_item_held}")
         #To-Do: need to make nav2 launch file allow for configuration of different assignemtns of zones to item colours as provided in item_zone_assignments.yaml, sticking with hardcoded config of index 1 for now
         assigned_zone = zone_assignment_configuration[1][self.current_item_held]['zone']
+
         
+        print(f"Assigned zone for item of colour {self.current_item_held} is {assigned_zone}")
+
         return assigned_zone
     
     # To-do: ensure setting up function with both self and current_assinged_zone works and is a valid setup, am unsure if calling it with just current_assigned_zone will work as is currently what is being done
-    def determine_waypoints_to_zone(self, current_assigned_zone, reverse_waypoints):
-        nav_to_zone_waypoints_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
+    def determine_waypoints_to_zone(self, current_assigned_zone):
+        nav_to_zone_waypoints_path = os.path.join(get_package_share_directory('solution'), 'config', 'nav_to_zone_waypoints.yaml')
 
         with open(nav_to_zone_waypoints_path, 'r') as f:
             nav_to_zone_waypoints_configuration = yaml.safe_load(f)
 
+        nav_waypoints = nav_to_zone_waypoints_configuration[current_assigned_zone]
 
-        waypoint_1 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_1']
-        waypoint_2 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_2']
-        waypoint_3 = nav_to_zone_waypoints_configuration[current_assigned_zone]['waypoint_3']
+        print(f'Current nav to zone waypoint config is here: {current_assigned_zone}')
+        waypoint_1 = nav_waypoints['waypoint_1']
+        waypoint_2 = nav_waypoints['waypoint_2']
+        waypoint_3 = nav_waypoints['waypoint_3']
 
-        if not(reverse_waypoints):
-            raw_waypoint_poses = [waypoint_1, waypoint_2, waypoint_3]
-
-        else:
-            raw_waypoint_poses = [waypoint_3, waypoint_2, waypoint_1]
+       
+        raw_waypoint_poses = [waypoint_1, waypoint_2, waypoint_3]
+        print(f'this is the raw waypoint poses: {raw_waypoint_poses}')
+       
 
         waypoint_poses = []
         pose = PoseStamped()
         pose.header.frame_id = 'map'
         pose.header.stamp = self.navigator.get_clock().now().to_msg()
         for wp in raw_waypoint_poses:
-            pose.pose.position.x = wp[0]['x']
-            pose.pose.position.y = wp[1]['y']
+            pose.pose.position.x = wp['x']
+            pose.pose.position.y = wp['y']
             waypoint_poses.append(copy.deepcopy(pose))
         
         self.waypoints = waypoint_poses
