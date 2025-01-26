@@ -15,6 +15,8 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/AllowRobotControllerSearch.msg"
   "msg/AllowSimpleCommanderSearch.msg"
+  "msg/ItemColourWithRobot.msg"
+  "msg/ItemColourWithRobotList.msg"
   "srv/FindItemColour.srv"
 )
 

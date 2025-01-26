@@ -8,7 +8,7 @@ from solution_interfaces.srv import FindItemColour
 class FindItemColourClientAsync(Node):
     def __init__(self):
         super().__init__('find_item_colour_client_async')
-        self.cli = self.create_client(FindItemColour, 'find_item_colour')
+        self.cli = self.create_client(FindItemColour, '/find_item_colour')
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('find item colour service not available, waiting again...')
         self.req = FindItemColour.Request()

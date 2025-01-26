@@ -30,8 +30,8 @@ from sensor_msgs.msg import LaserScan
 from assessment_interfaces.msg import Item, ItemList, ZoneList
 from auro_interfaces.msg import StringWithPose
 from auro_interfaces.srv import ItemRequest
-from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleCommanderSearch
-from solution_interfaces.action import HeldItem
+from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleCommanderSearch, ItemColourWithRobot, ItemColourWithRobotList
+from solution_interfaces.srv import FindItemColour
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -92,6 +92,8 @@ class RobotController(Node):
         self.goal_distance = random.uniform(0.3, 0.6) # Goal distance to travel in FORWARD state
         self.scan_triggered = [False] * 4 # Boolean value for each of the 4 LiDAR sensor sectors. True if obstacle detected within SCAN_THRESHOLD
         self.items = ItemList()
+        self.current_item_held_colour = ''
+        self.in_intended_drop_off_zone = False
 
         
         self.declare_parameter('robot_id', 'robot1')
@@ -114,6 +116,9 @@ class RobotController(Node):
 
         self.pick_up_service = self.create_client(ItemRequest, '/pick_up_item', callback_group=client_callback_group)
         self.offload_service = self.create_client(ItemRequest, '/offload_item', callback_group=client_callback_group)
+        self.find_item_colour_service = self.create_client(FindItemColour, '/find_item_colour')
+
+
 
         self.item_subscriber = self.create_subscription(
             ItemList,
@@ -163,6 +168,13 @@ class RobotController(Node):
             ZoneList,
             'zone',
             self.zone_sensor_callback,
+            10, callback_group=timer_callback_group
+        )
+
+        self.item_colour_with_robot_subscriber = self.create_subscription(
+            ItemColourWithRobotList,
+            '/item_colour_with_robot',
+            self.item_colour_with_robot_callback,
             10, callback_group=timer_callback_group
         )
 
@@ -273,62 +285,92 @@ class RobotController(Node):
 
         num_zones = len(zone_data)
 
-        if (num_zones == 1):
-            for zone in zone_data:
+        if (num_zones == 1) & (not(self.in_intended_drop_off_zone)):
+            detected_zone = zone_data[0]
+            
+            # determing zone colour based on numbering correspondence in msg type, ie. ZONE_CYAN = 1
 
-                #check zone is correct zone for held item type
-                #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
-             
+            detected_zone_id = detected_zone.zone
+            detected_zone_colour = ''
 
-                rqt = HeldItem.Request()
-                rqt.robot_id = self.robot_id
-                try:
-                    future = self.pick_up_service.call_async(rqt)
-                    self.executor.spin_until_future_complete(future)
-                    response = future.result()
-                    if response.success:
+            match detected_zone_id:
+                case 1:
+                    detected_zone_colour = 'cyan'
+                
+                case 2:
+                    detected_zone_colour = 'purple'
 
-                        # Switching control back to simple_commander node to use nav2 to navigate to center of map
+                case 3:
+                    detected_zone_colour = 'green'
 
-                        self.get_logger().info('Item picked up.')
+                case 4:
+                    detected_zone_colour = 'pink'
 
-                        # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
+                case _:
+                    pass
+            
+            
+
+
+
+            #check zone is correct zone for held item type
+            #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
+            
+
+            rqt = FindItemColour.Request()
+            rqt.robot_id = self.robot_id
+            try:
+                future = self.find_item_colour_service.call_async(rqt)
+                self.executor.spin_until_future_complete(future)
+                response = future.result()
+                if response.success:
+
+
+                    self.get_logger().info(f'Current Item colour determined: {self.current_item_held_colour}')
+                    
+                
+                    # Determining what zone item should go in to compare against current situation, i.e. what zone it is in and which item colour held
+
+                    zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
+
+                    with open(zone_assignment_path, 'r') as f:
+                        zone_assignment_configuration = yaml.safe_load(f)
+
+                    assigned_zone = zone_assignment_configuration[1][self.current_item_held_colour]['zone']
+
+
+                    if (assigned_zone == detected_zone_colour):
+                        print(f"{self.robot_id} is in correct drop off zone {assigned_zone} for item colour {self.current_item_held_colour}")
+
+                        self.in_intended_drop_off_zone = True
+
+
+                        # Change control logic state, assuming that previously were in a different state to prevent unneccessary re-runs of same part of control loop
                         self.previous_state = self.state
 
-                        self.state = State.WAITING_TO_RUN
-                        self.items.data = []
+                        if (self.previous_state != State.DROPPING_IN_ZONE):
+                            self.state = State.DROPPING_IN_ZONE
 
-                        msg = Bool()
-                        msg.data = True
-                        self.simple_commander_auth_publisher.publish(msg)
+                        
 
-
-
-                    else:
-                        self.get_logger().info('Unable to pick up item: ' + response.message)
-                except Exception as e:
-                    self.get_logger().info('Exception ' + e)  
-
-
-
-                zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
-
-                with open(zone_assignment_path, 'r') as f:
-                    zone_assignment_configuration = yaml.safe_load(f)
-
-                assigned_zone = zone_assignment_configuration[1][self.current_item_held]['zone']
-
-                """ 
-                if (assigned_zone):
-                zone_type = zone.zone
-                x_coordinate = zone.x
-                y_coordinate = zone.y
-                zone_size = zone.size """
-
+                else:
+                    self.get_logger().info('Unable to determine current item colour held ' + response.message)
+            except Exception as e:
+                self.get_logger().info('Exception ' + e) 
         else:
-            print("Too many zones detected, not suitable for placing item")
-            pass
+            print("Too many zones detected, unsure item can be placed")
+            self.in_intended_drop_off_zone = False
+
        
+    def item_colour_with_robot_callback(self, msg):
+
+        robot_and_colour_list= msg.data
+
+        for item in robot_and_colour_list:
+            if (item.robot_id == self.robot_id):
+                current_item_colour = item.item_colour
+                self.current_item_held_colour = current_item_colour
+        
 
     # Control loop for the FSM - called periodically by self.timer
     def control_loop(self):
@@ -476,43 +518,37 @@ class RobotController(Node):
                 self.cmd_vel_publisher.publish(msg)
 
             case State.DROPPING_IN_ZONE:
-                print('')
+            
+                # Checking based on zone sensor callback if we are in correct zone for item being held
+                #     
+                if (self.in_intended_drop_off_zone == True):
+                             
+                    rqt = ItemRequest.Request()
+                    rqt.robot_id = self.robot_id
+                    try:
+                        future = self.offload_service.call_async(rqt)
+                        self.executor.spin_until_future_complete(future)
+                        response = future.result()
+                        if response.success:
 
+                            self.get_logger().info('Item dropped off.')
 
-                 # create subscriber to zone_sensor topic to determine that only one zone is detected and its the correct one for the item type
-                
+                            # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
+                            self.previous_state = self.state
 
+                    
+                            # Switching control back to simple_commander node to use nav2 to navigate to center of map
+                            self.state = State.WAITING_TO_RUN
+                            
 
-                rqt = ItemRequest.Request()
-                rqt.robot_id = self.robot_id
-                try:
-                    future = self.offload_service.call_async(rqt)
-                    self.executor.spin_until_future_complete(future)
-                    response = future.result()
-                    if response.success:
+                            msg = Bool()
+                            msg.data = True
+                            self.simple_commander_auth_publisher.publish(msg)
 
-                        # Switching control back to simple_commander node to use nav2 to navigate to center of map
-
-                        self.get_logger().info('Item dropped off.')
-
-                        # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
-                        self.previous_state = self.state
-
-                        # check to see on /item_log if item of expected colour count has incremented (i.e. save value just before deposit attempt) and verify no other robot was in the zone according to rgb camera image data at least
-
-                        self.state = State.WAITING_TO_RUN
-                        self.items.data = []
-
-                        msg = Bool()
-                        msg.data = True
-                        self.simple_commander_auth_publisher.publish(msg)
-
-
-
-                    else:
-                        self.get_logger().info('Unable to drop off item: ' + response.message)
-                except Exception as e:
-                    self.get_logger().info('Exception ' + e)   
+                        else:
+                            self.get_logger().info('Unable to drop off item: ' + response.message)
+                    except Exception as e:
+                        self.get_logger().info('Exception ' + e)   
 
                
 

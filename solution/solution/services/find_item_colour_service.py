@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 
 from solution_interfaces.srv import FindItemColour
+from solution_interfaces.msg import ItemColourWithRobot
 from assessment_interfaces.msg import ItemHolder, ItemHolders
 
 class FindItemColourService(Node):
@@ -20,9 +21,9 @@ class FindItemColourService(Node):
         self.declare_parameter('robot_name', 'robot1')
         self.robot_name = self.get_parameter('robot_name').value
 
-        self.srv= self.create_service(FindItemColour, 'find_item_colour', self.find_item_colour_callback)
+        self.srv= self.create_service(FindItemColour, '/find_item_colour', self.find_item_colour_callback)
         
-    
+        self.colour_item_held_publisher = self.create_publisher(ItemColourWithRobot, '/item_colour_with_robot', 10)
 
         self.item__holder_subscriber = self.create_subscription(
             ItemHolders,
@@ -45,7 +46,16 @@ class FindItemColourService(Node):
             
             
             response.held_item_colour = self.current_item_held
-           
+
+            # Publishing to topic to indicate colour of item held by which robot
+
+            msg = ItemColourWithRobot()
+            msg.robot_id = self.robot_name
+            msg.item_colour = response.held_item_colour
+
+            self.colour_item_held_publisher.publish(msg)
+            
+
 
             # Resetting to defaults after succesful execution of service node in determing item colour held 
             self.current_held_items = []

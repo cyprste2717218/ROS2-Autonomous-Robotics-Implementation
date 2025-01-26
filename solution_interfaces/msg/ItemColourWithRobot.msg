@@ -1,0 +1,2 @@
+string robot_id
+string item_colour
