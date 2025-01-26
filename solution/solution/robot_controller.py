@@ -276,7 +276,7 @@ class RobotController(Node):
             for zone in zone_data:
 
                 #check zone is correct zone for held item type
-
+                #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
                 zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
 
                 with open(zone_assignment_path, 'r') as f:
