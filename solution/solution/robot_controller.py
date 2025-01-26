@@ -13,6 +13,8 @@
 #
  
 import sys
+import os
+import yaml
 
 import rclpy
 from rclpy.node import Node
@@ -29,6 +31,7 @@ from assessment_interfaces.msg import Item, ItemList, ZoneList
 from auro_interfaces.msg import StringWithPose
 from auro_interfaces.srv import ItemRequest
 from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleCommanderSearch
+from ament_index_python.packages import get_package_share_directory
 
 
 from tf_transformations import euler_from_quaternion
@@ -280,12 +283,12 @@ class RobotController(Node):
                     zone_assignment_configuration = yaml.safe_load(f)
 
                 assigned_zone = zone_assignment_configuration[1][self.current_item_held]['zone']
-
-                if (assigned_zone )
+                """ 
+                if (assigned_zone):
                 zone_type = zone.zone
                 x_coordinate = zone.x
                 y_coordinate = zone.y
-                zone_size = zone.size
+                zone_size = zone.size """
 
         else:
             print("Too many zones detected, not suitable for placing item")
