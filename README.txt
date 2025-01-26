@@ -72,11 +72,3 @@ Testable Simulation Scenarios
 $ ros2 launch solution solution_nav2_launch.py num_robots:=1
 
 ```
-
-
-- 3 robots enabled (alongside all defaults)
-
-```bash
-$ ros2 launch solution solution_nav2_launch.py num_robots:=3
-
-```
