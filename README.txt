@@ -10,42 +10,73 @@ Contents:
 How to Run The Implementation:
 -------------------------------------------------
 
-mention about needing tf_transformations package, sudo apt installing python3-pip and pip3 install transform3d
+The simulation was developed in utilisation of the following software, which must be installed on the host system in order for the simulation to run as intended:
 
-This simulation utilises SLAM via Cartographer, thus the following instructions must be followed to install the needed packages:
+-
+- 
 
 
+In addition correct simulation operation also requires building a clean workspace including the following packages provided by this repository being placed in the workspaces 'src/' directory, as is shown below:
 
-1). Install the Cartographer packages and verify presence within the ROS2 system using the following bash commands:
+(see here for official guidance: https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html),
 
 
 ```bash
-$ sudo apt install ros-humble-cartographer
-$ ros2 pkg list | grep cartographer
+# Go to workspace root
+$ cd ~/ros2_ws
+# Build workspace 
+$ colcon build 
+# 
+$ ros2 pkg list | grep solution
 
 # You should get
-# cartographer_ros
-# cartographer_ros_msgs
-# turtlebot3_cartographer
+# solution
+# solution_interfaces
 
 ```
-The terminal output as shown above should evidence the presence of the cartographer_ros, cartographer_ros_msgs and turtlebot3_cartographer packages.
+In addition, the same process should be repeated for the externally located packages, required in this workspace. These packages are 'assessment', 'assessment_interfaces', 'auro_interfaces', 'tf_relay' and 'tf_transformations'
 
-2). Rebuild the workspace with the new pkgs and source the local setup file:
+To find the 'assessment', 'assessment_interfaces', 'auro_interfaces'  and 'tf_relay' packages you can clone them from the 'main' branch of the 'AURO' repository (link: https://github.com/UoY-RoboStar/AURO)
 
-Within the workspace directory, execute the following commands
+To download and built the 'tf_transformations' package, the process requires using Pythons PIP package installer as follows:
 
 ```bash
-$ colcon build 
-$ source install/local_setup.bash
-```
+# In workspace root
+$ sudo apt install python3-pip
+$ pip3 install transform3d
+$ ros2 pkg list | grep tf_transformations
 
+# You should get
+# tf_transformations
+
+```
+Note: You can pass the '--event-handlers console_direct+' argument to colcon build command to show console output during the build process which may aid debugging in case issues arose. These logs are otherwise found in the 'log' dir
+
+
+
+In order to access the new built packages, source the overlay in the terminal you wish to use ros2 cli commands relating to these packages and in every other terminal you intend to use for these purposes:
+
+```bash
+# Source the overlay
+$ source install/local_setup.bash
+
+```
+Following these steps, the simulation should be ready for launch with the below testable simulation scenarios!
 
 
 Testable Simulation Scenarios
 
+- Single robot testing scenario:
+
+```bash
+$ ros2 launch solution solution_nav2_launch.py num_robots:=1
+
+```
+
 
 - 3 robots enabled (alongside all defaults)
 
+```bash
+$ ros2 launch solution solution_nav2_launch.py num_robots:=3
 
-(#1) ros2 launch solution solution_nav2_launch.py num_robots:=3
+```

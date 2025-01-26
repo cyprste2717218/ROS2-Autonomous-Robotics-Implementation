@@ -194,9 +194,10 @@ class SimpleCommander(Node):
                 self.state = State.NAVIGATING
             
             case State.NAVIGATING:
+                feedback = self.navigator.getFeedback()
 
                 if not self.navigator.isTaskComplete():
-                    feedback = self.navigator.getFeedback()
+                    
                     
                     # Logging current waypoint if waypoints are being followed
                     if (len(self.waypoints) > 0):
@@ -249,7 +250,8 @@ class SimpleCommander(Node):
 
                             case CurrentNavGoal.WAYPOINTS:
 
-                                print(f"current waypoint: {feedback.current_waypoint + 1}, total number of waypoints: {len(self.waypoints)}")
+                                print(f"Travelled {feedback.current_waypoint + 1} / 3 waypoints ")
+
                                 if (feedback.current_waypoint + 1) == len(self.waypoints):
                                     
 
@@ -257,14 +259,14 @@ class SimpleCommander(Node):
                                     # Cancelling task to prevent reoccurring success messages when control loop is called
                                     self.navigator.cancelTask()
 
-                                    # Giving back control to robot controller to depoit item in zone, halting simple commander node operations temporarily
+                                    # Giving back control to robot controller to deposit item in zone, halting simple commander node operations temporarily
                                     msg = Bool()
                                     msg.data = True
                                     self.robot_controller_auth_publisher.publish(msg)
 
                                     self.State = State.IDLE
-                                else:
-                                    print(f"Travelled {feedback.current_waypoint + 1} / 3 waypoints ")
+                               
+                                  
 
                                     
 

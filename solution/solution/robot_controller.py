@@ -480,7 +480,11 @@ class RobotController(Node):
 
                 rqt = FindItemColour.Request()
                 rqt.request_item_colour = True
+
+                print("about to call the try block")
                 try:
+
+                    print("in the try block")
                     future = self.find_item_colour_service.call_async(rqt)
                     self.executor.spin_until_future_complete(future)
                     response = future.result()
