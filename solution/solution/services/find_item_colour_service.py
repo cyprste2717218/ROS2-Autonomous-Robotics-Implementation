@@ -1,18 +1,17 @@
 import rclpy
-from rclpy.action import ActionServer
+
 from rclpy.node import Node
 
-from solution_interfaces.action import HeldItem
+from solution_interfaces.srv import FindItemColour
 from assessment_interfaces.msg import ItemHolder, ItemHolders
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
-class HeldColourActionServer(Node):
+class FindItemColourService(Node):
 
     def __init__(self):
-        super().__init__('held_colour_action_server')
+        super().__init__('find_item_colour_service')
 
         self.already_holding_item = False
-        self.is_running_action = False
+        self.is_running_service = False
         self.is_executing_item_id_logic = False
         self.current_held_items = []
         self.current_item_held = ''
@@ -21,12 +20,9 @@ class HeldColourActionServer(Node):
         self.declare_parameter('robot_name', 'robot1')
         self.robot_name = self.get_parameter('robot_name').value
 
-        self.action_server = ActionServer(
-            self,
-            HeldItem,
-            'heldItem',
-            self.execute_callback
-        )
+        self.srv= self.create_service(FindItemColour, 'find_item_colour', self.find_item_colour_callback)
+        
+    
 
         self.item__holder_subscriber = self.create_subscription(
             ItemHolders,
@@ -35,33 +31,32 @@ class HeldColourActionServer(Node):
             10
         )
 
-    def execute_callback(self, goal_handle):
-        self.get_logger().info('Executing current item colour held request goal')
+    def find_item_colour_callback(self, request, response):
+        self.get_logger().info('Incoming request \na: %d b: %d' % (request.a, request.b))
 
-        # Setting action server execution status to running to prevent unneccessary logic flow runs of item_holder_callback method
+        # Setting service execution status to running to prevent unneccessary logic flow runs of item_holder_callback method
 
-        self.is_running_action = True
+        self.is_running_service = True
         while self.current_item_held == '':
             print(f"Awaiting determining colour of item held by {self.robot_name} if holding")
         if (self.current_item_held != 'No Items Found Held'):
             print(f'Currently holding item of colour type: {self.current_item_held}')
 
-            goal_handle.succeed()
             
-            result = HeldItem.Result()
-            result.data = self.current_item_held
+            
+            response.held_item_colour = self.current_item_held
+           
 
-
-            # Resetting to defaults after succesful execution of goal server node in determing item colour held 
+            # Resetting to defaults after succesful execution of service node in determing item colour held 
             self.current_held_items = []
             self.current_item_held = ''
-            self.is_running_action = False
-        return result
+            self.is_running_service = False
+        return response
     
 
     def item_holder_callback(self, msg):
         
-        if (len(self.current_held_items) == 0) & self.is_running_action:
+        if (len(self.current_held_items) == 0) & self.is_running_service:
             
             self.is_executing_item_id_logic = True
             self.current_held_items = msg.data
@@ -88,12 +83,12 @@ class HeldColourActionServer(Node):
 
             
         
-def main(args=None):
-    rclpy.init(args=args)
+def main():
+    rclpy.init()
 
-    held_colour_action_server = HeldColourActionServer()
+    find_item_colour_service = FindItemColourService()
 
-    rclpy.spin(held_colour_action_server)
+    rclpy.spin(find_item_colour_service)
 
 if __name__ == '__main__':
     main()

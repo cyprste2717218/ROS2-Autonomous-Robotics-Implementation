@@ -31,6 +31,7 @@ from assessment_interfaces.msg import Item, ItemList, ZoneList
 from auro_interfaces.msg import StringWithPose
 from auro_interfaces.srv import ItemRequest
 from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleCommanderSearch
+from solution_interfaces.action import HeldItem
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -277,12 +278,46 @@ class RobotController(Node):
 
                 #check zone is correct zone for held item type
                 #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
+             
+
+                rqt = HeldItem.Request()
+                rqt.robot_id = self.robot_id
+                try:
+                    future = self.pick_up_service.call_async(rqt)
+                    self.executor.spin_until_future_complete(future)
+                    response = future.result()
+                    if response.success:
+
+                        # Switching control back to simple_commander node to use nav2 to navigate to center of map
+
+                        self.get_logger().info('Item picked up.')
+
+                        # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
+                        self.previous_state = self.state
+
+                        self.state = State.WAITING_TO_RUN
+                        self.items.data = []
+
+                        msg = Bool()
+                        msg.data = True
+                        self.simple_commander_auth_publisher.publish(msg)
+
+
+
+                    else:
+                        self.get_logger().info('Unable to pick up item: ' + response.message)
+                except Exception as e:
+                    self.get_logger().info('Exception ' + e)  
+
+
+
                 zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
 
                 with open(zone_assignment_path, 'r') as f:
                     zone_assignment_configuration = yaml.safe_load(f)
 
                 assigned_zone = zone_assignment_configuration[1][self.current_item_held]['zone']
+
                 """ 
                 if (assigned_zone):
                 zone_type = zone.zone

@@ -49,7 +49,9 @@ setup(
         'console_scripts': [
             'robot_controller = solution.robot_controller:main',
             'data_logger = solution.data_logger:main',
-            'simple_commander = solution.simple_commander:main'
+            'simple_commander = solution.simple_commander:main',
+            'find_item_colour_service = solution.find_item_colour_service:main',
+            'find_item_colour_client = solution.find_item_colour_client:main'
         ],
     },
 )
