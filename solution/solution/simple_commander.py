@@ -189,6 +189,8 @@ class SimpleCommander(Node):
                 # nav_start = self.navigator.get_clock().now()
                 print("following waypoints")
                 self.navigator.followWaypoints(self.waypoints)
+                self.previous_nav_goal = self.current_nav_goal
+                self.current_nav_goal = CurrentNavGoal.WAYPOINTS
                 self.state = State.NAVIGATING
             
             case State.NAVIGATING:
@@ -227,12 +229,15 @@ class SimpleCommander(Node):
                                 msg = Bool()
                                 msg.data = True
                                 self.robot_controller_auth_publisher.publish(msg)
+
+                                # Temporarily switch to IDLE State while robot controller does random search to find item to pick up
+
+                                self.state = State.IDLE
+
                             case CurrentNavGoal.CENTER_MAP_GOAL:
 
                                 # Cancelling task to prevent reoccurring success messages when control loop is called
                                 self.navigator.cancelTask()
-
-                                # To-do: stuff to determine path with specific waypoints for relevant zone, likely need to create a function to call here,
                                 
                                 print('before getting assigned zone')
                                 assigned_zone = self.determine_zone_for_item()
@@ -243,8 +248,12 @@ class SimpleCommander(Node):
                                 self.state = State.SET_WAYPOINTS
 
                             case CurrentNavGoal.WAYPOINTS:
+
+                                print(f"current waypoint: {feedback.current_waypoint + 1}, total number of waypoints: {len(self.waypoints)}")
                                 if (feedback.current_waypoint + 1) == len(self.waypoints):
                                     
+
+                                    print("All waypoints navigated")
                                     # Cancelling task to prevent reoccurring success messages when control loop is called
                                     self.navigator.cancelTask()
 
@@ -254,6 +263,8 @@ class SimpleCommander(Node):
                                     self.robot_controller_auth_publisher.publish(msg)
 
                                     self.State = State.IDLE
+                                else:
+                                    print(f"Travelled {feedback.current_waypoint + 1} / 3 waypoints ")
 
                                     
 

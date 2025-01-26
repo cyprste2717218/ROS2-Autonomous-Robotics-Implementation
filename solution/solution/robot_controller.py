@@ -94,6 +94,7 @@ class RobotController(Node):
         self.items = ItemList()
         self.current_item_held_colour = ''
         self.in_intended_drop_off_zone = False
+        self.detected_zone_colour = ''
 
         
         self.declare_parameter('robot_id', 'robot1')
@@ -269,11 +270,14 @@ class RobotController(Node):
 
 
     def control_permission_callback(self, msg):
+        print(f"this is the msg receieved on control permission callback {msg}")
         if (msg.data):
             if (self.previous_state == State.COLLECTING):
+                print("previous state was collecting so now setting robot to drop in zone state")
                 self.previous_state = self.state
                 self.state = State.DROPPING_IN_ZONE
             else:
+                print("previous state wasn't collecting so heading into forward state for random search for items to pickup")
                 self.previous_state = self.state
                 self.state = State.FORWARD
         else:
@@ -296,7 +300,7 @@ class RobotController(Node):
             match detected_zone_id:
                 case 1:
                     detected_zone_colour = 'cyan'
-                
+                    
                 case 2:
                     detected_zone_colour = 'purple'
 
@@ -309,57 +313,8 @@ class RobotController(Node):
                 case _:
                     pass
             
-            
-
-
-
-            #check zone is correct zone for held item type
-            #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
-            
-
-            rqt = FindItemColour.Request()
-            rqt.robot_id = self.robot_id
-            try:
-                future = self.find_item_colour_service.call_async(rqt)
-                self.executor.spin_until_future_complete(future)
-                response = future.result()
-                if response.success:
-
-
-                    self.get_logger().info(f'Current Item colour determined: {self.current_item_held_colour}')
-                    
-                
-                    # Determining what zone item should go in to compare against current situation, i.e. what zone it is in and which item colour held
-
-                    zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
-
-                    with open(zone_assignment_path, 'r') as f:
-                        zone_assignment_configuration = yaml.safe_load(f)
-
-                    assigned_zone = zone_assignment_configuration[1][self.current_item_held_colour]['zone']
-
-
-                    if (assigned_zone == detected_zone_colour):
-                        print(f"{self.robot_id} is in correct drop off zone {assigned_zone} for item colour {self.current_item_held_colour}")
-
-                        self.in_intended_drop_off_zone = True
-
-
-                        # Change control logic state, assuming that previously were in a different state to prevent unneccessary re-runs of same part of control loop
-                        self.previous_state = self.state
-
-                        if (self.previous_state != State.DROPPING_IN_ZONE):
-                            self.state = State.DROPPING_IN_ZONE
-
-                        
-
-                else:
-                    self.get_logger().info('Unable to determine current item colour held ' + response.message)
-            except Exception as e:
-                self.get_logger().info('Exception ' + e) 
-        else:
-            print("Too many zones detected, unsure item can be placed")
-            self.in_intended_drop_off_zone = False
+            self.detected_zone_colour = detected_zone_colour
+          
 
        
     def item_colour_with_robot_callback(self, msg):
@@ -518,7 +473,57 @@ class RobotController(Node):
                 self.cmd_vel_publisher.publish(msg)
 
             case State.DROPPING_IN_ZONE:
+
+                #check zone is correct zone for held item type
+                #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
             
+
+                rqt = FindItemColour.Request()
+                rqt.request_item_colour = True
+                try:
+                    future = self.find_item_colour_service.call_async(rqt)
+                    self.executor.spin_until_future_complete(future)
+                    response = future.result()
+                    if response.success:
+
+
+                        self.get_logger().info(f'Current Item colour determined: {self.current_item_held_colour}')
+                        
+                    
+                        # Determining what zone item should go in to compare against current situation, i.e. what zone it is in and which item colour held
+
+                        zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
+
+                        with open(zone_assignment_path, 'r') as f:
+                            zone_assignment_configuration = yaml.safe_load(f)
+
+                        assigned_zone = zone_assignment_configuration[1][self.current_item_held_colour]['zone']
+
+
+                        if (assigned_zone == self.detected_zone_colour):
+                            print(f"{self.robot_id} is in correct drop off zone {assigned_zone} for item colour {self.current_item_held_colour}")
+
+                            self.in_intended_drop_off_zone = True
+
+
+                            # Change control logic state, assuming that previously were in a different state to prevent unneccessary re-runs of same part of control loop
+                            self.previous_state = self.state
+
+                            if (self.previous_state != State.DROPPING_IN_ZONE):
+                                self.state = State.DROPPING_IN_ZONE
+
+                            
+
+                    else:
+                        self.get_logger().info('Unable to determine current item colour held ' + response.message)
+                except Exception as e:
+                    self.get_logger().info('Exception ' + e) 
+                else:
+                    print("Too many zones detected, unsure item can be placed")
+                    self.in_intended_drop_off_zone = False
+
+
+                
                 # Checking based on zone sensor callback if we are in correct zone for item being held
                 #     
                 if (self.in_intended_drop_off_zone == True):

@@ -18,13 +18,13 @@ cyan:
 
 purple:
   waypoint_1:
-    x:   -1.7
-    y:   -1.8
-    yaw:  0.0
-  waypoint_2:
     x:  -1.0
     y:   0.8
     yaw: 0.0
+  waypoint_2:
+    x:   -1.7
+    y:   -1.8
+    yaw:  0.0
   waypoint_3:
     x:  -3.5
     y:  -3.0
