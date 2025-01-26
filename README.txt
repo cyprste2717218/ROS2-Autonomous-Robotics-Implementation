@@ -12,8 +12,9 @@ How to Run The Implementation:
 
 The simulation was developed in utilisation of the following software, which must be installed on the host system in order for the simulation to run as intended:
 
--
-- 
+- ROS2 Humble Hawksbill
+- Gazebo Classic 11
+- rclpy (Python Client library)
 
 
 In addition correct simulation operation also requires building a clean workspace including the following packages provided by this repository being placed in the workspaces 'src/' directory, as is shown below:
