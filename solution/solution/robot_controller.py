@@ -25,10 +25,11 @@ from std_msgs.msg import Float32, Bool
 from geometry_msgs.msg import Twist, Pose, PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
-from assessment_interfaces.msg import Item, ItemList
+from assessment_interfaces.msg import Item, ItemList, ZoneList
 from auro_interfaces.msg import StringWithPose
 from auro_interfaces.srv import ItemRequest
 from solution_interfaces.msg import AllowRobotControllerSearch, AllowSimpleCommanderSearch
+
 
 from tf_transformations import euler_from_quaternion
 import angles
@@ -154,6 +155,13 @@ class RobotController(Node):
             1, callback_group=timer_callback_group
         )
 
+        self.zone_sensor_subscriber = self.create_subscription(
+            ZoneList,
+            'zone',
+            self.zone_sensor_callback,
+            10, callback_group=timer_callback_group
+        )
+
         # Publishes Twist messages (linear and angular velocities) on the /cmd_vel topic
         # http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Twist.html
         # 
@@ -254,6 +262,35 @@ class RobotController(Node):
                 self.state = State.FORWARD
         else:
             self.state = State.WAITING_TO_RUN
+
+
+    def zone_sensor_callback(self, msg):
+        zone_data = msg.data
+
+        num_zones = len(zone_data)
+
+        if (num_zones == 1):
+            for zone in zone_data:
+
+                #check zone is correct zone for held item type
+
+                zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
+
+                with open(zone_assignment_path, 'r') as f:
+                    zone_assignment_configuration = yaml.safe_load(f)
+
+                assigned_zone = zone_assignment_configuration[1][self.current_item_held]['zone']
+
+                if (assigned_zone )
+                zone_type = zone.zone
+                x_coordinate = zone.x
+                y_coordinate = zone.y
+                zone_size = zone.size
+
+        else:
+            print("Too many zones detected, not suitable for placing item")
+            pass
+       
 
     # Control loop for the FSM - called periodically by self.timer
     def control_loop(self):
@@ -403,11 +440,47 @@ class RobotController(Node):
             case State.DROPPING_IN_ZONE:
                 print('')
 
-                # create subscriber to zone_sensor topic to determine that only one zone is detected and its the correct one for the item type
+
+                 # create subscriber to zone_sensor topic to determine that only one zone is detected and its the correct one for the item type
+                
+
+
+                rqt = ItemRequest.Request()
+                rqt.robot_id = self.robot_id
+                try:
+                    future = self.offload_service.call_async(rqt)
+                    self.executor.spin_until_future_complete(future)
+                    response = future.result()
+                    if response.success:
+
+                        # Switching control back to simple_commander node to use nav2 to navigate to center of map
+
+                        self.get_logger().info('Item dropped off.')
+
+                        # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
+                        self.previous_state = self.state
+
+                        # check to see on /item_log if item of expected colour count has incremented (i.e. save value just before deposit attempt) and verify no other robot was in the zone according to rgb camera image data at least
+
+                        self.state = State.WAITING_TO_RUN
+                        self.items.data = []
+
+                        msg = Bool()
+                        msg.data = True
+                        self.simple_commander_auth_publisher.publish(msg)
+
+
+
+                    else:
+                        self.get_logger().info('Unable to drop off item: ' + response.message)
+                except Exception as e:
+                    self.get_logger().info('Exception ' + e)   
+
+               
 
                 # utilise the offload/item ROS service when we know we are in the zone
 
-                # check to see on /item_log if item of expected colour count has incremented (i.e. save value just before deposit attempt) and verify no other robot was in the zone according to rgb camera image data at least
+              
 
                 # publish msg to simple_commander via relevant topic to inform it to trace back the waypoint to center followed by the initial location 
 
