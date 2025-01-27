@@ -328,7 +328,7 @@ class RobotController(Node):
         
     def call__find_item_colour_service(self):
     
-        client = self.find_item_colour_service()
+        client = self.find_item_colour_service
 
         rqt = FindItemColour.Request()
         rqt.request_item_colour = True
@@ -381,7 +381,7 @@ class RobotController(Node):
     def call_drop_off_service(self):
           
           if (self.in_intended_drop_off_zone == True):
-            client = self.offload_service()                 
+            client = self.offload_service                 
             rqt = ItemRequest.Request()
             rqt.robot_id = self.robot_id
             try:
@@ -418,7 +418,7 @@ class RobotController(Node):
         
         item = self.items.data[0]
 
-        client = self.pick_up_service()
+        client = self.pick_up_service
 
         # Obtained by curve fitting from experimental runs.
         estimated_distance = 32.4 * float(item.diameter) ** -0.75 #69.0 * float(item.diameter) ** -0.89
@@ -559,7 +559,7 @@ class RobotController(Node):
             case State.COLLECTING:
 
                 # Calling pick up service
-                self.call_pick_up_service(self)
+                self.call_pick_up_service()
 
              
 
@@ -567,12 +567,12 @@ class RobotController(Node):
 
                 #check zone is correct zone for held item type
                 #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
-                self.call__find_item_colour_service(self)
+                self.call__find_item_colour_service()
             
                 
                 # Checking based on zone sensor callback if we are in correct zone for item being held
                 #     
-                self.call_drop_off_service(self)
+                self.call_drop_off_service()
 
             case State.WAITING_TO_RUN:
                 print("waiting to run state")
