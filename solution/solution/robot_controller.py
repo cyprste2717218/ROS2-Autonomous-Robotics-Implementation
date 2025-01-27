@@ -326,7 +326,7 @@ class RobotController(Node):
                 current_item_colour = item.item_colour
                 self.current_item_held_colour = current_item_colour
         
-    def call__find_item_colour_service(self, node):
+    def call__find_item_colour_service(self):
     
         client = self.find_item_colour_service()
 
@@ -338,7 +338,7 @@ class RobotController(Node):
 
             print("in the try block")
             future = client.call_async(rqt)
-            rclpy.spin_until_future_complete(node, future)
+            rclpy.spin_until_future_complete(self,future)
             response = future.result()
             if response.success:
 
@@ -378,7 +378,7 @@ class RobotController(Node):
             print("Too many zones detected, unsure item can be placed")
             self.in_intended_drop_off_zone = False
 
-    def call_drop_off_service(self, node):
+    def call_drop_off_service(self):
           
           if (self.in_intended_drop_off_zone == True):
             client = self.offload_service()                 
@@ -386,7 +386,7 @@ class RobotController(Node):
             rqt.robot_id = self.robot_id
             try:
                 future = client.call_async(rqt)
-                rclpy.spin_until_future_complete(node, future)
+                rclpy.spin_until_future_complete(self, future)
                 response = future.result()
                 if response.success:
 
@@ -409,7 +409,7 @@ class RobotController(Node):
             except Exception as e:
                 self.get_logger().info('Exception ' + e)   
 
-    def call_pick_up_service(self, node):
+    def call_pick_up_service(self):
         if len(self.items.data) == 0:
             self.previous_pose = self.pose
             self.previous_state = self.state
@@ -430,7 +430,7 @@ class RobotController(Node):
             rqt.robot_id = self.robot_id
             try:
                 future = client.call_async(rqt)
-                rclpy.spin_until_future_complete(node, future)
+                rclpy.spin_until_future_complete(self, future)
                 response = future.result()
                 if response.success:
 
@@ -458,9 +458,7 @@ class RobotController(Node):
         msg = Twist()
         msg.linear.x = 0.25 * estimated_distance
         msg.angular.z = item.x / 320.0
-        self.cmd_vel_publisher.publish(msg)
-
-        
+        self.cmd_vel_publisher.publish(msg)   
 
 
 
@@ -559,9 +557,9 @@ class RobotController(Node):
                     self.get_logger().info(f"Finished turning, driving forward by {self.goal_distance:.2f} metres")
 
             case State.COLLECTING:
-                
+
                 # Calling pick up service
-                self.call_pick_up_service()
+                self.call_pick_up_service(self)
 
              
 
@@ -569,12 +567,12 @@ class RobotController(Node):
 
                 #check zone is correct zone for held item type
                 #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
-                self.call__find_item_colour_service()
+                self.call__find_item_colour_service(self)
             
                 
                 # Checking based on zone sensor callback if we are in correct zone for item being held
                 #     
-                self.call_drop_off_service()
+                self.call_drop_off_service(self)
 
             case State.WAITING_TO_RUN:
                 print("waiting to run state")
