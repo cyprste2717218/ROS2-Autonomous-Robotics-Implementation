@@ -29,12 +29,14 @@ class CurrentNavGoal(Enum):
     INITIAL_GOAL = 0
     CENTER_MAP_GOAL = 1
     WAYPOINTS = 3
+    UNSET_GOAL = 4
 
 
 class PreviousNavGoal(Enum):
     INITIAL_GOAL = 0
     CENTER_MAP_GOAL = 1
     WAYPOINTS = 3
+    UNSET_GOAL = 4
 
 class SimpleCommander(Node):
 
@@ -50,6 +52,7 @@ class SimpleCommander(Node):
         # Current colour of item held
         self.current_item_held = ''
         self.already_holding_item = False
+        self.task_cancelled_already = False
         
         self.waypoints = []
 
@@ -129,7 +132,7 @@ class SimpleCommander(Node):
     def item_holder_callback(self, msg):
         #print("item holder callback not being called")
         held_item = msg.data[-1]
-        print(f"this is the held_item {held_item}")
+        
         if (held_item.robot_id == self.robot_name) & (held_item.holding_item) & (not(self.already_holding_item)):
 
             self.already_holding_item = True
@@ -201,7 +204,7 @@ class SimpleCommander(Node):
                     
                     # Logging current waypoint if waypoints are being followed
                     if (len(self.waypoints) > 0):
-                        self.navigator.get_logger().info('Executing current waypoint: ' + str(feedback.current_waypoint + 1) + '/' + str(len(self.waypoints)))
+                        
                         
                         # Cancelling task if robot gets stuck after max period time (need to refactor most likely to make this work properly with rest of control logic)
 
@@ -250,25 +253,30 @@ class SimpleCommander(Node):
 
                             case CurrentNavGoal.WAYPOINTS:
 
+                                # Cancelling task to prevent reoccurring success messages when control loop is called
+                                self.navigator.cancelTask()
                                 print(f"Travelled {feedback.current_waypoint + 1} / 3 waypoints ")
 
-                                if (feedback.current_waypoint + 1) == len(self.waypoints):
+
+                                print("All waypoints navigated")
+
+                                msg = Bool()
+                                msg.data = True
+                                self.robot_controller_auth_publisher.publish(msg)
+
+                                self.State = State.IDLE
+                                self.previous_nav_goal = self.current_nav_goal
+                                self.current_nav_goal = CurrentNavGoal.UNSET_GOAL
+
+                              
                                     
+                                self.task_cancelled_already = True
+                                # Giving back control to robot controller to deposit item in zone, halting simple commander node operations temporarily
 
-                                    print("All waypoints navigated")
-                                    # Cancelling task to prevent reoccurring success messages when control loop is called
-                                    self.navigator.cancelTask()
-
-                                    # Giving back control to robot controller to deposit item in zone, halting simple commander node operations temporarily
-                                    msg = Bool()
-                                    msg.data = True
-                                    self.robot_controller_auth_publisher.publish(msg)
-
-                                    self.State = State.IDLE
+                            case CurrentNavGoal.UNSET_GOAL:
+                                print("Unset goal")
                                
-                                  
-
-                                    
+                                          
 
                     elif result == TaskResult.CANCELED:
                         print('Goal was canceled!')
