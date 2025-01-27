@@ -53,6 +53,7 @@ class SimpleCommander(Node):
         self.current_item_held = ''
         self.already_holding_item = False
         self.task_cancelled_already = False
+        self.just_done_logic_loop = False
         
         self.waypoints = []
 
@@ -151,10 +152,37 @@ class SimpleCommander(Node):
                 self.state = State.SET_MAP_CENTER_GOAL
 
             elif (msg.data) & (self.previous_nav_goal == CurrentNavGoal.WAYPOINTS):
-                # reversing waypoints to route back to center of map after item deposit
-                reversed_waypoints = list(reversed(self.waypoints))
-                self.waypoints = reversed_waypoints
-                self.state = State.SET_WAYPOINTS
+
+                if (self.just_done_logic_loop == True):
+                    self.state = State.SET_MAP_CENTER_GOAL
+                else:
+                    self.just_done_logic_loop = True
+                    # reversing waypoints to route back to center of map and initial starting point after item deposit
+                    print("about to calc new_waypoints")
+                    new_waypoints = list(reversed(self.waypoints))
+                    
+                    # getting center_map_goal_pose
+                    center_map_goal_pose = PoseStamped()
+                    center_map_goal_pose.header.frame_id = 'map'
+                    center_map_goal_pose.header.stamp = self.get_clock().now().to_msg()
+                    center_map_goal_pose.pose.position.x = 0.0  
+                    center_map_goal_pose.pose.position.y = 0.0
+
+                    # getting initial_goal_pose
+
+                    goal_pose = PoseStamped()
+                    goal_pose.header.frame_id = 'map'
+                    goal_pose.header.stamp = self.get_clock().now().to_msg()
+                    goal_pose.pose.position.x = self.initial_goal_x
+                    goal_pose.pose.position.y = self.initial_goal_y
+
+                    # putting together all waypoints
+
+                    new_waypoints.append(center_map_goal_pose)
+                    new_waypoints.append(goal_pose)
+
+                    self.waypoints = new_waypoints
+                    self.state = State.SET_WAYPOINTS
 
             
         
@@ -184,6 +212,9 @@ class SimpleCommander(Node):
                 self.navigator.goToPose(center_map_goal_pose)
                 self.previous_nav_goal = self.current_nav_goal
                 self.current_nav_goal = CurrentNavGoal.CENTER_MAP_GOAL
+
+                # Resetting this value to False to allow collecting and drop off cycle to re-run based on commander_permission_callback state comparing logic written
+                self.just_done_logic_loop = False
 
                 self.state = State.NAVIGATING
             

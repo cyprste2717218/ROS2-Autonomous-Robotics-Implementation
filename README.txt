@@ -67,7 +67,7 @@ Following these steps, the simulation should be ready for launch with the below 
 
 Testable Simulation Scenarios
 
-- Single robot testing scenario:
+- Single robot testing scenario with all obstacles enabled (i.e. using assessment_world.pgm map defined in asssment package):
 
 ```bash
 $ ros2 launch solution solution_nav2_launch.py num_robots:=1

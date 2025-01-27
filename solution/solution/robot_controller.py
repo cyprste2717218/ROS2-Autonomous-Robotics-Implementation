@@ -225,7 +225,7 @@ class RobotController(Node):
     # The pose estimates are expressed in a coordinate system relative to the starting pose of the robot
     def odom_callback(self, msg):
         self.pose = msg.pose.pose # Store the pose in a class variable
-        self.get_logger().info(f"current pose is: {self.pose}")
+       
 
 
 
@@ -276,6 +276,14 @@ class RobotController(Node):
                 print("previous state was collecting so now setting robot to drop in zone state")
                 self.previous_state = self.state
                 self.state = State.DROPPING_IN_ZONE
+
+            elif (self.previous_state == State.DROPPING_IN_ZONE):
+                self.previous_state = self.state
+                self.state = State.FORWARD
+
+                """  msg = Bool()
+                msg.data = True
+                self.simple_commander_auth_publisher.publish(msg) """
             else:
                 print("previous state wasn't collecting so heading into forward state for random search for items to pickup")
                 self.previous_state = self.state
@@ -476,14 +484,8 @@ class RobotController(Node):
 
             case State.DROPPING_IN_ZONE:
 
-                #check zone is correct zone for held item type
-                #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
-            
-               
-                # Checking based on zone sensor callback if we are in correct zone for item being held
-                #     
-                
-                        
+                # Utilise the offload/item ROS service when we know we are in the zone
+
                 rqt = ItemRequest.Request()
                 rqt.robot_id = self.robot_id
                 try:
@@ -502,6 +504,7 @@ class RobotController(Node):
                         self.state = State.WAITING_TO_RUN
                         
 
+                        # publish msg to simple_commander via relevant topic to inform it to trace back the waypoint to center followed by the initial location 
                         msg = Bool()
                         msg.data = True
                         self.simple_commander_auth_publisher.publish(msg)
@@ -513,11 +516,8 @@ class RobotController(Node):
 
                
 
-                # utilise the offload/item ROS service when we know we are in the zone
-
               
-
-                # publish msg to simple_commander via relevant topic to inform it to trace back the waypoint to center followed by the initial location 
+                
 
 
             case State.WAITING_TO_RUN:
