@@ -326,6 +326,143 @@ class RobotController(Node):
                 current_item_colour = item.item_colour
                 self.current_item_held_colour = current_item_colour
         
+    def call__find_item_colour_service(self, node):
+    
+        client = self.find_item_colour_service()
+
+        rqt = FindItemColour.Request()
+        rqt.request_item_colour = True
+
+        print("about to call the try block")
+        try:
+
+            print("in the try block")
+            future = client.call_async(rqt)
+            rclpy.spin_until_future_complete(node, future)
+            response = future.result()
+            if response.success:
+
+
+                self.get_logger().info(f'Current Item colour determined: {self.current_item_held_colour}')
+                
+            
+                # Determining what zone item should go in to compare against current situation, i.e. what zone it is in and which item colour held
+
+                zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
+
+                with open(zone_assignment_path, 'r') as f:
+                    zone_assignment_configuration = yaml.safe_load(f)
+
+                assigned_zone = zone_assignment_configuration[1][self.current_item_held_colour]['zone']
+
+
+                if (assigned_zone == self.detected_zone_colour):
+                    print(f"{self.robot_id} is in correct drop off zone {assigned_zone} for item colour {self.current_item_held_colour}")
+
+                    self.in_intended_drop_off_zone = True
+
+
+                    # Change control logic state, assuming that previously were in a different state to prevent unneccessary re-runs of same part of control loop
+                    self.previous_state = self.state
+
+                    if (self.previous_state != State.DROPPING_IN_ZONE):
+                        self.state = State.DROPPING_IN_ZONE
+
+                    
+
+            else:
+                self.get_logger().info('Unable to determine current item colour held ' + response.message)
+        except Exception as e:
+            self.get_logger().info('Exception ' + e) 
+        else:
+            print("Too many zones detected, unsure item can be placed")
+            self.in_intended_drop_off_zone = False
+
+    def call_drop_off_service(self, node):
+          
+          if (self.in_intended_drop_off_zone == True):
+            client = self.offload_service()                 
+            rqt = ItemRequest.Request()
+            rqt.robot_id = self.robot_id
+            try:
+                future = client.call_async(rqt)
+                rclpy.spin_until_future_complete(node, future)
+                response = future.result()
+                if response.success:
+
+                    self.get_logger().info('Item dropped off.')
+
+                    # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
+                    self.previous_state = self.state
+
+            
+                    # Switching control back to simple_commander node to use nav2 to navigate to center of map
+                    self.state = State.WAITING_TO_RUN
+                    
+
+                    msg = Bool()
+                    msg.data = True
+                    self.simple_commander_auth_publisher.publish(msg)
+
+                else:
+                    self.get_logger().info('Unable to drop off item: ' + response.message)
+            except Exception as e:
+                self.get_logger().info('Exception ' + e)   
+
+    def call_pick_up_service(self, node):
+        if len(self.items.data) == 0:
+            self.previous_pose = self.pose
+            self.previous_state = self.state
+            self.state = State.FORWARD
+            return
+        
+        item = self.items.data[0]
+
+        client = self.pick_up_service()
+
+        # Obtained by curve fitting from experimental runs.
+        estimated_distance = 32.4 * float(item.diameter) ** -0.75 #69.0 * float(item.diameter) ** -0.89
+
+        self.get_logger().info(f'Item Estimated distance {estimated_distance}')
+
+        if estimated_distance <= 0.35:
+            rqt = ItemRequest.Request()
+            rqt.robot_id = self.robot_id
+            try:
+                future = client.call_async(rqt)
+                rclpy.spin_until_future_complete(node, future)
+                response = future.result()
+                if response.success:
+
+                    # Switching control back to simple_commander node to use nav2 to navigate to center of map
+
+                    self.get_logger().info('Item picked up.')
+
+                    # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
+                    self.previous_state = self.state
+
+                    self.state = State.WAITING_TO_RUN
+                    self.items.data = []
+
+                    msg = Bool()
+                    msg.data = True
+                    self.simple_commander_auth_publisher.publish(msg)
+
+
+
+                else:
+                    self.get_logger().info('Unable to pick up item: ' + response.message)
+            except Exception as e:
+                self.get_logger().info('Exception ' + e)   
+
+        msg = Twist()
+        msg.linear.x = 0.25 * estimated_distance
+        msg.angular.z = item.x / 320.0
+        self.cmd_vel_publisher.publish(msg)
+
+        
+
+
 
     # Control loop for the FSM - called periodically by self.timer
     def control_loop(self):
@@ -422,151 +559,22 @@ class RobotController(Node):
                     self.get_logger().info(f"Finished turning, driving forward by {self.goal_distance:.2f} metres")
 
             case State.COLLECTING:
-
-
-                if len(self.items.data) == 0:
-                    self.previous_pose = self.pose
-                    self.previous_state = self.state
-                    self.state = State.FORWARD
-                    return
                 
-                item = self.items.data[0]
+                # Calling pick up service
+                self.call_pick_up_service()
 
-                # Obtained by curve fitting from experimental runs.
-                estimated_distance = 32.4 * float(item.diameter) ** -0.75 #69.0 * float(item.diameter) ** -0.89
-
-                self.get_logger().info(f'Item Estimated distance {estimated_distance}')
-
-                if estimated_distance <= 0.35:
-                    rqt = ItemRequest.Request()
-                    rqt.robot_id = self.robot_id
-                    try:
-                        future = self.pick_up_service.call_async(rqt)
-                        self.executor.spin_until_future_complete(future)
-                        response = future.result()
-                        if response.success:
-
-                            # Switching control back to simple_commander node to use nav2 to navigate to center of map
-
-                            self.get_logger().info('Item picked up.')
-
-                            # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
-                            self.previous_state = self.state
-
-                            self.state = State.WAITING_TO_RUN
-                            self.items.data = []
-
-                            msg = Bool()
-                            msg.data = True
-                            self.simple_commander_auth_publisher.publish(msg)
-
-
-
-                        else:
-                            self.get_logger().info('Unable to pick up item: ' + response.message)
-                    except Exception as e:
-                        self.get_logger().info('Exception ' + e)   
-
-                msg = Twist()
-                msg.linear.x = 0.25 * estimated_distance
-                msg.angular.z = item.x / 320.0
-                self.cmd_vel_publisher.publish(msg)
+             
 
             case State.DROPPING_IN_ZONE:
 
                 #check zone is correct zone for held item type
                 #To-do: create action client/server for getting assigned_zone based on item colour, so it passes item_colour (likely should replace logic in simple_commander with this also, create an action client/server for figuring out what item is held)
+                self.call__find_item_colour_service()
             
-
-                rqt = FindItemColour.Request()
-                rqt.request_item_colour = True
-
-                print("about to call the try block")
-                try:
-
-                    print("in the try block")
-                    future = self.find_item_colour_service.call_async(rqt)
-                    self.executor.spin_until_future_complete(future)
-                    response = future.result()
-                    if response.success:
-
-
-                        self.get_logger().info(f'Current Item colour determined: {self.current_item_held_colour}')
-                        
-                    
-                        # Determining what zone item should go in to compare against current situation, i.e. what zone it is in and which item colour held
-
-                        zone_assignment_path = os.path.join(get_package_share_directory('solution'), 'config', 'item_zone_assignments.yaml')
-
-                        with open(zone_assignment_path, 'r') as f:
-                            zone_assignment_configuration = yaml.safe_load(f)
-
-                        assigned_zone = zone_assignment_configuration[1][self.current_item_held_colour]['zone']
-
-
-                        if (assigned_zone == self.detected_zone_colour):
-                            print(f"{self.robot_id} is in correct drop off zone {assigned_zone} for item colour {self.current_item_held_colour}")
-
-                            self.in_intended_drop_off_zone = True
-
-
-                            # Change control logic state, assuming that previously were in a different state to prevent unneccessary re-runs of same part of control loop
-                            self.previous_state = self.state
-
-                            if (self.previous_state != State.DROPPING_IN_ZONE):
-                                self.state = State.DROPPING_IN_ZONE
-
-                            
-
-                    else:
-                        self.get_logger().info('Unable to determine current item colour held ' + response.message)
-                except Exception as e:
-                    self.get_logger().info('Exception ' + e) 
-                else:
-                    print("Too many zones detected, unsure item can be placed")
-                    self.in_intended_drop_off_zone = False
-
-
                 
                 # Checking based on zone sensor callback if we are in correct zone for item being held
                 #     
-                if (self.in_intended_drop_off_zone == True):
-                             
-                    rqt = ItemRequest.Request()
-                    rqt.robot_id = self.robot_id
-                    try:
-                        future = self.offload_service.call_async(rqt)
-                        self.executor.spin_until_future_complete(future)
-                        response = future.result()
-                        if response.success:
-
-                            self.get_logger().info('Item dropped off.')
-
-                            # saving current state before changing for control coordination purposes between robot_controller and simple_commander nodes
-                            self.previous_state = self.state
-
-                    
-                            # Switching control back to simple_commander node to use nav2 to navigate to center of map
-                            self.state = State.WAITING_TO_RUN
-                            
-
-                            msg = Bool()
-                            msg.data = True
-                            self.simple_commander_auth_publisher.publish(msg)
-
-                        else:
-                            self.get_logger().info('Unable to drop off item: ' + response.message)
-                    except Exception as e:
-                        self.get_logger().info('Exception ' + e)   
-
-               
-
-                # utilise the offload/item ROS service when we know we are in the zone
-
-              
-
-                # publish msg to simple_commander via relevant topic to inform it to trace back the waypoint to center followed by the initial location 
-
+                self.call_drop_off_service()
 
             case State.WAITING_TO_RUN:
                 print("waiting to run state")
